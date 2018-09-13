@@ -6,25 +6,16 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class BeginSynchronizationPacket
+    class BeginSynchronizationPacket : Packet
     {
-        protected NetworkBehavior net;
-        public string data;
-        protected PacketID packetID = PacketID.BeginSynchronization;
-        public BeginSynchronizationPacket(NetworkBehavior net)
+        public BeginSynchronizationPacket(NetworkBehavior net) : base(net, PacketID.BeginSynchronization)
         {
-            this.net = net;
             generateData();
         }
 
-        protected virtual void generateData()
+        protected override void generateData()
         {
-            data = ((int) packetID).ToString() + NetworkIdentity.packetSpiltter.ToString();
-        }
-
-        public virtual void send(int port)
-        {
-            net.send(data, port, NetworkInterface.TCP);
+            base.generateData();
         }
     }
 }

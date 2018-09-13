@@ -53,7 +53,7 @@ namespace Networking
     {
         internal static Dictionary<string, Type> classes = new Dictionary<string, Type>();
         internal static NetworkBehavior instance;
-        private static Dictionary<int, EndPoint> clients = new Dictionary<int, EndPoint>();
+        internal static Dictionary<int, EndPoint> clients = new Dictionary<int, EndPoint>();
 
         public NetworkIdentity player { get; private set; }
         public bool isLocalPlayerSpawned { get; set; }
@@ -63,10 +63,10 @@ namespace Networking
             {
                 return clients.Count;
             } }
-        private Server server { get; set; }
-        private Client client { get; set; }
-        private DirectServer directServer { get; set; }
-        private DirectClient directClient { get; set; }
+        internal Server server { get; set; }
+        internal Client client { get; set; }
+        internal DirectServer directServer { get; set; }
+        internal DirectClient directClient { get; set; }
         public bool isServer { get; private set; }
         public bool isConnected { get; private set; }
         public delegate void ConnectionLobbyAcceptedEventHandler(string ip, int port, long ping);
@@ -87,7 +87,7 @@ namespace Networking
         private void Player_OnBeginSynchronization()
         {
             BeginSynchronizationPacket packet = new BeginSynchronizationPacket(this);
-            packet.send(port);
+            packet.Send(NetworkInterface.TCP);
         }
 
         public NetworkBehavior(NetworkIdentity player, int port)
@@ -115,13 +115,12 @@ namespace Networking
             {
                 Console.WriteLine("New player at: " + port);
                 SpawnPacket spawnPacket;
-                //spawnPacket = new SpawnPacket(this, player.GetType(), player.id, player.ownerId); //Spawn server player in the remote client
-                //spawnPacket.sendToAPlayer(NetworkInterface.TCP, port);
-
                 foreach (NetworkIdentity i in NetworkIdentity.entities.Values)
                 {
-                    spawnPacket = new SpawnPacket(this, getNetworkClassTypeByName(i.GetType().FullName), i.id, i.ownerId); //Spawn all existing clients in the remote client
-                    spawnPacket.sendToAPlayer(NetworkInterface.TCP, port);
+                    var args = i.GetType().GetProperties().Where(prop => prop.Name.ToLower().Substring(0, 4).Equals("sync")).Select(p => p.GetValue(i)).ToArray().Cast<String>().ToArray();
+                    
+                    spawnPacket = new SpawnPacket(this, getNetworkClassTypeByName(i.GetType().FullName), i.id, i.ownerId, args); //Spawn all existing clients in the remote client
+                    spawnPacket.SendToAUser(NetworkInterface.TCP, port);
                 }
                 //Console.WriteLine("Spawn all existing clients");
                 NetworkIdentity identity = Activator.CreateInstance(player.GetType()) as NetworkIdentity;//Spawn the client player locally
@@ -132,11 +131,11 @@ namespace Networking
                 clients.Add(port, new EndPoint(identity, ip));
                // Console.WriteLine("spawned the client player locally");
                 SpawnLocalPlayerPacket packet = new SpawnLocalPlayerPacket(this, player.GetType(), port);//spawn the client player in the remote client
-                packet.send(NetworkInterface.TCP);
+                packet.SendToAUser(NetworkInterface.TCP, port);
                 //Console.WriteLine("spawned the client player in the remote client");
 
                 spawnPacket = new SpawnPacket(this, player.GetType(), identity.id, identity.ownerId);//spawn the client player in all other clients
-                spawnPacket.send(NetworkInterface.TCP, port);
+                spawnPacket.Send(NetworkInterface.TCP, port);
                 //Console.WriteLine("spawned the client player in all other clients");
             }
         }
@@ -148,18 +147,21 @@ namespace Networking
             {
                 throw new Exception("No connection exist!");
             }
-
-            if (!isServer)
-            {
-                throw new Exception("Client tryed to change a field with a syncVar attribute!");
-            }
-
+          
             SyncVarPacket packet;
             switch (packetID)
             {
                 case PacketID.SyncVar:
                     packet = new SyncVarPacket(this, args, id);
-                    packet.send(networkInterface);
+                    if (isServer)
+                    {
+                        parsePacket(packet.GetArgs().ToArray(), null, 0, networkInterface);
+                        packet.Send(networkInterface);
+                    }
+                    else
+                    {
+                        packet.Send(networkInterface);
+                    }
                     break;
                 default:
                     break;
@@ -179,22 +181,22 @@ namespace Networking
                     packet = new BroadcastMethodPacket(this, args, invokeInServer, id);
                     if (isServer)
                     {
-                        parsePacket(packet.data, null, 0, networkInterface);
+                        parsePacket(packet.GetArgs().ToArray(), null, 0, networkInterface);
                     }
                     else
                     {
-                        packet.send(networkInterface);
+                        packet.Send(networkInterface);
                     }
                     break;
                 case PacketID.Command:
                     packet = new CommandPacket(this, args, id);
                     if (isServer)
                     {
-                        parsePacket(packet.data, null, 0, networkInterface);
+                        parsePacket(packet.GetArgs().ToArray(), null, 0, networkInterface);
                     }
                     else
                     {
-                        packet.send(networkInterface);
+                        packet.Send(networkInterface);
                     }
                     break;
                 default:
@@ -207,7 +209,7 @@ namespace Networking
         {
             try
             {
-                client = new Client(ip, port, '§');
+                client = new Client(ip, port, '§', '|');
             }
             catch (Exception e)
             {
@@ -223,11 +225,11 @@ namespace Networking
         {
             try
             {
-                client = new Client(ip, port, '§');
+                client = new Client(ip, port, '§', '|');
                 client.connect();
                 client.OnReceivedEvent += Client_receivedEvent;
                 client.OnConnectionLostEvent += Client_serverDisconnectedEvent;
-                directClient = new DirectClient(ip, port + 1);
+                directClient = new DirectClient(ip, port + 1, '|');
                 directClient.start();
                 directClient.OnReceivedEvent += receivedEvent;
             }
@@ -245,10 +247,10 @@ namespace Networking
         {
             try
             {
-                server = new Server(port, '§');
+                server = new Server(port, '§', '|');
                 server.startServer();
                 server.OnReceivedEvent += Server_receivedEvent;
-                directServer = new DirectServer(port + 1);
+                directServer = new DirectServer(port + 1, '|');
                 directServer.start();
                 directServer.OnReceivedEvent += receivedEvent;
             }
@@ -299,119 +301,127 @@ namespace Networking
             }
 
             LobbyInfoPacket packet = new LobbyInfoPacket(this, data);
-            packet.sendToAPlayer(port);
+            packet.Send(NetworkInterface.TCP, port);
         }
 
-        private void receivedEvent(string data, string ip, int port)
+        private void receivedEvent(string[] args, string ip, int port)
         {
             try
             {
-                parsePacket(data, ip, port, NetworkInterface.UDP);
+                parsePacket(args, ip, port, NetworkInterface.UDP);
             }
             catch (Exception e)
             {
-                Console.WriteLine("Cannot parse packet: " + data);
+                Console.WriteLine("Cannot parse packet: ");
+                foreach (string s in args)
+                {
+                    print(args);
+                }
                 Console.WriteLine(e);
             }
         }
 
-        private void parsePacket(string data, string ip, int port, NetworkInterface networkInterface)
+        private void parsePacket(string[] args, string ip, int port, NetworkInterface networkInterface)
         {
-            string[] srts = data.Split(NetworkIdentity.packetSpiltter);
+            string[] orgArgs = args;
             int packetID; object o; NetworkIdentity identity;
-            if (!int.TryParse(srts[0], out packetID))
+            if (!int.TryParse(args[0], out packetID))
             {
-                throw new Exception("Invalid packet recived, id: " + srts[0]);
+                throw new Exception("Invalid packet recived, id: " + args[0]);
             }
-            List<string> temp = srts.ToList();
+            List<string> temp = args.ToList();
             temp.RemoveAt(0);
-            srts = temp.ToArray();
-            srts = srts[0].Split(NetworkIdentity.argsSplitter);
+            args = temp.ToArray();
             switch (packetID)
             {
                 case (int)PacketID.LobbyInfo:
-                    OnLobbyInfoEvent?.Invoke(srts[0]);
+                    OnLobbyInfoEvent?.Invoke(args[0]);
                     break;
                 case (int)PacketID.DircetInterfaceInitiating:
                     EndPoint eP;
-                    if(clients.TryGetValue(int.Parse(srts[0]), out eP))
+                    if (clients.TryGetValue(int.Parse(args[0]), out eP))
                     {
                         eP.port = port;
-                        clients[int.Parse(srts[0])] = eP;
+                        clients[int.Parse(args[0])] = eP;
                     }
-                    
+
                     break;
                 case (int)PacketID.BroadcastMethod:
                     if (isServer)
                     {
                         if (networkInterface == NetworkInterface.TCP)
                         {
-                            server.broadcast(data, null);
+                            server.broadcast(orgArgs);
                         }
                         else
                         {
                             for (int i = 0; i < clients.Count; i++)
                             {
-                                directServer.send(data, clients.Values.ElementAt(i).ip, clients.Values.ElementAt(i).port);
+                                directServer.send(orgArgs, clients.Values.ElementAt(i).ip, clients.Values.ElementAt(i).port);
                             }
                         }
-                        if (!bool.Parse(srts[srts.Length - 2]))
+                        if (!bool.Parse(args[args.Length - 2]))
                         {
                             return;
                         }
                     }
-                    invokeMethodLocaly(srts);
+                    invokeMethodLocaly(args);
                     break;
                 case (int)PacketID.Command:
-                    identity = getNetworkIdentityFromLastArg(ref srts);
+                    identity = getNetworkIdentityFromLastArg(ref args);
                     if (identity == null)
                     {
                         return;
                     }
-                    MethodNetworkAttribute.networkInvoke(player, srts);
+                    MethodNetworkAttribute.networkInvoke(player, args);
                     break;
                 case (int)PacketID.SyncVar:
-                    identity = getNetworkIdentityFromLastArg(ref srts);
+                    identity = getNetworkIdentityFromLastArg(ref args);
                     if (identity == null)
                     {
                         return;
                     }
-                    SyncVar.networkInvoke(identity, srts);
+                    SyncVar.networkInvoke(identity, args);
                     if (isServer)
                     {
                         if (networkInterface == NetworkInterface.TCP)
                         {
-                            server.broadcast(data, null);
+                            server.broadcast(orgArgs);
                         }
                         else
                         {
                             for (int i = 0; i < clients.Count; i++)
                             {
-                                directServer.send(data, clients.Values.ElementAt(i).ip, clients.Values.ElementAt(i).port);
+                                directServer.send(orgArgs, clients.Values.ElementAt(i).ip, clients.Values.ElementAt(i).port);
                             }
                         }
                     }
                     break;
                 case (int)PacketID.Spawn:
-                    o = spawnObjectLocaly(srts[0]);
+                    o = spawnObjectLocaly(args[0]);
                     identity = o as NetworkIdentity;
-                    identity.ownerId = int.Parse(srts[1]);
-                    if(identity.ownerId == player.id)
+                    identity.ownerId = int.Parse(args[1]);
+                    if (identity.ownerId == player.id)
                     {
                         identity.hasAuthority = true;
                     }
-                    identity.id = int.Parse(srts[2]);
+                    identity.id = int.Parse(args[args.Length - 1]);
                     identity.isInServer = isServer;
-                    identity.ThreadPreformEvents();
-                    Console.WriteLine("New entity at: " + srts[2] + " " + srts[0]);
+                    Object[] objs = new object[args.Length - 1 - 2];
+                    for (int i = 2; i < args.Length - 1; i++)
+                    {
+                        objs[i - 2] = args[i];
+                    }
+                    identity.ThreadPreformEvents(objs);
+                    Console.WriteLine("New entity at: " + args[args.Length - 1] + " " + args[0]);
                     break;
                 case (int)PacketID.SpawnLocalPlayer:
                     //o = spawnObjectLocaly(srts[0]);
                     //player = o as NetworkIdentity;
-                    player.id = int.Parse(srts[1]);
+                    player.id = int.Parse(args[1]);
                     DircetInterfaceInitiatingPacket packet = new DircetInterfaceInitiatingPacket(this, player.id);
-                    packet.send();
-                    player.ownerId = int.Parse(srts[1]);
+                    packet.Send(NetworkInterface.TCP);
+                    player.ownerId = int.Parse(args[1]);
                     player.hasAuthority = true;
                     player.isInServer = isServer;
                     player.isLocalPlayer = true;
@@ -419,10 +429,10 @@ namespace Networking
                     isLocalPlayerSpawned = true;
                     break;
                 case (int)PacketID.SpawnWithLocalAuthority:
-                    o = spawnObjectLocaly(srts[0]);
+                    o = spawnObjectLocaly(args[0]);
                     identity = o as NetworkIdentity;
-                    identity.ownerId = int.Parse(srts[1]);
-                    identity.id = int.Parse(srts[2]);
+                    identity.ownerId = int.Parse(args[1]);
+                    identity.id = int.Parse(args[2]);
                     identity.hasAuthority = true;
                     identity.isInServer = isServer;
                     identity.ThreadPreformEvents();
@@ -431,8 +441,8 @@ namespace Networking
                     Synchronize(ip, port);
                     break;
                 //case (int)PacketID.NetworkIdentityDisconnected:            
-                  //  clientDsiconnected(int.Parse(srts[0]));
-                   // break;
+                //  clientDsiconnected(int.Parse(srts[0]));
+                // break;
                 default:
                     break;
             }
@@ -472,7 +482,6 @@ namespace Networking
 
         public static void print(object[] s)
         {
-            Console.Write("Print: ");
             foreach (object item in s)
             {
                 Console.Write("!" + item.ToString() + "!");
@@ -487,9 +496,9 @@ namespace Networking
             Close();
         }
 
-        private void Server_receivedEvent(string[] data, string ip, int port)
+        private void Server_receivedEvent(string[][] data, string ip, int port)
         {
-            foreach (string s in data)
+            foreach (string[] s in data)
             {
                 try
                 {
@@ -497,15 +506,16 @@ namespace Networking
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Cannot parse packet: " + s);
+                    Console.WriteLine("Cannot parse packet: ");
+                    print(s);
                     Console.WriteLine(e);
                 }
             }
         }
 
-        private void Client_receivedEvent(string[] data, string ip, int port)
+        private void Client_receivedEvent(string[][] data, string ip, int port)
         {
-            foreach(string s in data)
+            foreach(string[] s in data)
             {           
                 try
                 {
@@ -513,83 +523,13 @@ namespace Networking
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Cannot parse packet: " + s);
+                    Console.WriteLine("Cannot parse packet: ");
+                    print(s);
                     Console.WriteLine(e);
                 }
             }
         }
-
-        internal void send(string data, int port, NetworkInterface networkInterface)
-        {
-            if (isServer)
-            {
-                if (networkInterface == NetworkInterface.TCP)
-                {
-                    server.send(data, port, null);
-                }
-                else
-                {
-                    directBroadcast(data, port);
-                }
-            }
-            else
-            {
-                if (networkInterface == NetworkInterface.TCP)
-                {
-                    client.send(data);
-                }
-                else
-                {
-                    directClient.send(data);
-                }
-            }
-        }
-
-        internal void send(string data, NetworkInterface networkInterface)
-        {
-            if (isServer)
-            {
-                if (networkInterface == NetworkInterface.TCP)
-                {
-                    server.broadcast(data, null);
-                } 
-                else
-                {
-                    directBroadcast(data, 0);
-                }
-            }
-            else
-            {
-                if (networkInterface == NetworkInterface.TCP)
-                {
-                    client.send(data);
-                }
-                else
-                {
-                    directClient.send(data);
-                }
-            }
-        }
-
-        internal void sendToAPlayer(string data, int port, NetworkInterface networkInterface)
-        {
-            if (isServer)
-            {
-                if (networkInterface == NetworkInterface.TCP)
-                {
-                    server.sendToAUser(data, port);
-                }
-                else
-                {
-                    directServer.send(data, clients[port].ip, clients[port].port);
-                }
-            }
-            else
-            {
-                throw new Exception("Client cannot send data to a specific user!");
-            }
-        }
-
+        
         private object spawnObjectLocaly(string fullName)
         {
             try
@@ -614,7 +554,7 @@ namespace Networking
             return null;
         }
 
-        public void spawnWithServerAuthority(Type instance)
+        public NetworkIdentity spawnWithServerAuthority(Type instance, params String[] args)
         {
             if (!isServer)
             {
@@ -627,12 +567,13 @@ namespace Networking
             identity.ownerId = port;
             identity.hasAuthority = true;
             identity.isInServer = true;
-            identity.ThreadPreformEvents();
-            SpawnPacket packet = new SpawnPacket(this, instance, id, port);
-            packet.send(NetworkInterface.TCP);
+            identity.ThreadPreformEvents(args);
+            SpawnPacket packet = new SpawnPacket(this, instance, id, port, args);
+            packet.Send(NetworkInterface.TCP);
+            return identity;
         }
 
-        public void spawnWithClientAuthority(Type instance, int clientId)
+        public NetworkIdentity spawnWithClientAuthority(Type instance, int clientId, params String[] args)
         {
             if (!isServer)
             {
@@ -644,20 +585,21 @@ namespace Networking
             identity.id = id;
             identity.ownerId = clientId;
             identity.isInServer = true;
-            identity.ThreadPreformEvents();
-            SpawnPacket packet = new SpawnPacket(this, instance, id, clientId);
-            packet.send(NetworkInterface.TCP);
+            identity.ThreadPreformEvents(args);
+            SpawnPacket packet = new SpawnPacket(this, instance, id, clientId, args);
+            packet.Send(NetworkInterface.TCP);
+            return identity;
         }
 
-        private void directBroadcast(string data, int port)
+        internal void directBroadcast(string[] args, params int[] ports)
         {
             foreach (EndPoint endPoint in clients.Values)
             {
-                if(endPoint.port == 0 || endPoint.port == port)
+                if(endPoint.port == 0 || ports.Contains(endPoint.port))
                 {
                     continue;
                 }
-                directServer.send(data, endPoint.ip, endPoint.port);
+                directServer.send(args, endPoint.ip, endPoint.port);
             }
         }
 

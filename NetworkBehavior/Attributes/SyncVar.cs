@@ -11,7 +11,7 @@ using System.Reflection;
 namespace Networking
 {
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property,
-                      AllowMultiple = true, Inherited = false)  // Multiuse attribute.  
+                      AllowMultiple = true, Inherited = false)
  ]
     [PSerializable]
     public class SyncVar : LocationInterceptionAspect
@@ -27,6 +27,10 @@ namespace Networking
         public override void OnSetValue(LocationInterceptionArgs args)
         {
             base.OnSetValue(args);
+            if(!(args.Instance as NetworkIdentity).hasInitialized)
+            {
+                return;
+            }
             lock (NetworkIdentity.scope)
             {
                 if (!NetworkIdentity.interrupt)

@@ -6,45 +6,46 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class SpawnPacket
+    class SpawnPacket : Packet
     {
-        protected NetworkBehavior net;
         protected Type instance;
         protected object id;
         protected object ownerId;
-        public string data;
-        protected PacketID packetID = PacketID.Spawn;
-        public SpawnPacket(NetworkBehavior net, Type instance, int id, int ownerId)
+        protected string[] spawnParams;
+        public SpawnPacket(NetworkBehavior net, Type instance, int id, int ownerId, params string[] spawnParams) : base(net, PacketID.Spawn)
         {
             this.net = net;
             this.instance = instance;
             this.id = id;
             this.ownerId = ownerId;
+            this.spawnParams = spawnParams;
             generateData();
         }
 
-        protected virtual void generateData()
+        protected override void generateData()
         {
-            data = 
-                ((int)packetID) + NetworkIdentity.packetSpiltter.ToString() +
-                instance.FullName + NetworkIdentity.argsSplitter.ToString() + 
-                ownerId + NetworkIdentity.argsSplitter.ToString() +
-                id;
+            base.generateData();
+            args.Add(instance.FullName);
+            args.Add(ownerId.ToString());
+            args.AddRange(spawnParams);
+            args.Add(id.ToString());
+        }
+
+        /*
+        public virtual void sendToAPlayer(NetworkInterface networkInterface, int port)
+        {
+            sendToAPlayer(port, networkInterface);
         }
 
         public virtual void send(NetworkInterface networkInterface)
         {
-            net.send(data, networkInterface);
+            send(networkInterface);
         }
 
         public virtual void send(NetworkInterface networkInterface, int port)
         {
-            net.send(data, port, networkInterface);
+            send(port, networkInterface);
         }
-
-        public virtual void sendToAPlayer(NetworkInterface networkInterface, int port)
-        {
-            net.sendToAPlayer(data, port, networkInterface);
-        }
+        */
     }
 }

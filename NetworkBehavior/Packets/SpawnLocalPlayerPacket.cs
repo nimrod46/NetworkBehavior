@@ -6,31 +6,21 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class SpawnLocalPlayerPacket
+    class SpawnLocalPlayerPacket : SpawnPacket
     {
-        protected NetworkBehavior net;
-        protected Type instance;
-        protected int playerID;
-        public string data;
-        protected PacketID packetID = PacketID.SpawnLocalPlayer;
-        public SpawnLocalPlayerPacket(NetworkBehavior net, Type instance, int playerID)
+        public SpawnLocalPlayerPacket(NetworkBehavior net, Type instance, int playerID, params string[] spawnParams) : base(net, instance, playerID, playerID, spawnParams)
         {
-            this.net = net;
-            this.instance = instance;
-            this.playerID = playerID;
+            packetID = PacketID.SpawnLocalPlayer;
+            args.Clear();
             generateData();
         }
 
-        protected virtual void generateData()
-        {   
-            data = ((int)packetID) + NetworkIdentity.packetSpiltter.ToString() + 
-                instance.FullName + NetworkIdentity.argsSplitter.ToString() + 
-                playerID;
-        }
-
-        public virtual void send(NetworkInterface networkInterface)
+        protected override void generateData()
         {
-            net.sendToAPlayer(data, playerID, networkInterface);
+            base.generateData();
+            args.RemoveAt(0);
+            args.Insert(0, ((int)packetID).ToString());
+            Console.WriteLine(packetID);
         }
     }
 }

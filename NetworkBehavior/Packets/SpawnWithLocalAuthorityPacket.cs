@@ -6,34 +6,11 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class SpawnWithLocalAuthorityPacket
+    class SpawnWithLocalAuthorityPacket : SpawnPacket
     {
-        protected NetworkBehavior net;
-        protected Type instance;
-        protected int ownerID;
-        protected int id;
-        public string data;
-        protected PacketID packetID = PacketID.SpawnLocalPlayer;
-        public SpawnWithLocalAuthorityPacket(NetworkBehavior net, Type instance, int ownerID, int id)
+        public SpawnWithLocalAuthorityPacket(NetworkBehavior net, Type instance, int ownerID, int id, params string[] spwanParams) : base(net, instance, id, ownerID, spwanParams)
         {
-            this.net = net;
-            this.instance = instance;
-            this.ownerID = ownerID;
-            this.id = id;
-            generateData();
-        }
-
-        protected virtual void generateData()
-        {   
-            data = ((int)packetID) + NetworkIdentity.packetSpiltter.ToString() + 
-                instance.FullName + NetworkIdentity.argsSplitter.ToString() + 
-                ownerID + NetworkIdentity.argsSplitter.ToString() + 
-                id;
-        }
-
-        public virtual void send(NetworkInterface networkInterface)
-        {
-            net.sendToAPlayer(data, ownerID, networkInterface);
-        }
+            packetID = PacketID.SpawnLocalPlayer;
+        }    
     }
 }

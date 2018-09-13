@@ -20,7 +20,7 @@ namespace Networking
     public abstract class MethodNetworkAttribute : MethodInterceptionAspect
     {
         public NetworkInterface networkInterface = NetworkInterface.TCP;
-        public bool invokeInServer = false;
+        public bool invokeInServer = true;
         internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, int id);
         internal static event networkingInvokeEvent onNetworkingInvoke;
         internal static Dictionary<string, MethodBase> methods = new Dictionary<string, MethodBase>();

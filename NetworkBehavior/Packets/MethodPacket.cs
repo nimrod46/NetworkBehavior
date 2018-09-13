@@ -7,57 +7,44 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    abstract class MethodPacket
+    abstract class MethodPacket : Packet
     {
-        protected NetworkBehavior net;
-        protected MethodInterceptionArgs args;
+        protected MethodInterceptionArgs methodArgs;
         protected bool invokeInServer;
-        public string data;
-        protected PacketID packetId;
         protected int id;
-        public MethodPacket (NetworkBehavior net, MethodInterceptionArgs args, bool invokeInServer, PacketID packetId, int id)
+        public MethodPacket (NetworkBehavior net, MethodInterceptionArgs methodArgs, bool invokeInServer, PacketID packetId, int id) : base(net, packetId)
         {
             this.net = net;
-            this.args = args;
+            this.methodArgs = methodArgs;
             this.invokeInServer = invokeInServer;
-            this.packetId = packetId;
             this.id = id;
             generateData();
         }
 
-        protected virtual void generateData()
+        protected override void generateData()
         {
-            data = "";
-            if (args.Arguments.Count != 0)
+            base.generateData();
+            if (methodArgs.Arguments.Count != 0)
             {
-                foreach (object o in args.Arguments)
+                foreach (object o in methodArgs.Arguments)
                 {
                     if (o == null)
                     {
-                        data += "null";
+                        args.Add("null");
                     }
                     else if (o is NetworkIdentity)
                     {
-                        data += (o as NetworkIdentity).id;
+                        args.Add((o as NetworkIdentity).id.ToString());
                     }
                     else
                     {
-                        data += o.ToString().Replace(NetworkIdentity.packetSpiltter.ToString(), "").Replace(NetworkIdentity.argsSplitter.ToString(), "");
+                        args.Add(o.ToString());
                     }
-                    data += NetworkIdentity.argsSplitter;
                 }
-                data = data.Remove(data.Length - 1);
             }
-            data = 
-                ((int)packetId) + NetworkIdentity.packetSpiltter.ToString() + 
-                args.Method.Name + NetworkIdentity.argsSplitter.ToString() + 
-                data + NetworkIdentity.argsSplitter.ToString() + invokeInServer + NetworkIdentity.argsSplitter.ToString() +
-                id;
-        }
-
-        public virtual void send(NetworkInterface networkInterface)
-        {
-            net.send(data, networkInterface);
+            args.Insert(1, methodArgs.Method.Name);
+            args.Add(invokeInServer.ToString());
+            args.Add(id.ToString());
         }
     }
 }

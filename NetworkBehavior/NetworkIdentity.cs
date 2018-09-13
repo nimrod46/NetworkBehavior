@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -16,7 +17,7 @@ namespace Networking
         internal static int lastId = 0;
         public static Dictionary<int, NetworkIdentity> entities = new Dictionary<int, NetworkIdentity>();
 
-        internal delegate void NetworkInitialize();
+        internal delegate void NetworkInitialize(params Object[] objects);
         internal event NetworkInitialize OnNetworkInitializeEvent;
         internal delegate void HasLocalAuthorityInitialize();
         internal event HasLocalAuthorityInitialize OnHasLocalAuthorityInitializeEvent;
@@ -29,6 +30,7 @@ namespace Networking
         public bool hasAuthority = false;
         public bool isLocalPlayer = false;
         public bool isInServer = false;
+        public bool hasInitialized = false;
         public int id;
         public int ownerId;
         public NetworkIdentity()
@@ -44,34 +46,36 @@ namespace Networking
 
 
 
-        internal void ThreadPreformEvents()
+        internal void ThreadPreformEvents(params Object[] objects)
         {
             //new Thread(new ThreadStart(PreformEvents)).Start();
-            PreformEvents();
+            PreformEvents(objects);
         }
 
-        private void PreformEvents()
+        private void PreformEvents(params Object[] objects)
         {
             lock (entities)
             {
                 if (!entities.ContainsKey(id))
                 {
                     entities.Add(id, this);
-                    OnNetworkInitializeEvent?.Invoke();
-                    if (hasAuthority)
-                    {
-                        OnHasLocalAuthorityInitializeEvent?.Invoke();
-                    }
-
-                    if (isLocalPlayer)
-                    {
-                        OnLocalPlayerInitializeEvent?.Invoke();
-                    }
                 }
+                OnNetworkInitializeEvent?.Invoke(objects);
+                if (hasAuthority)
+                {
+                    OnHasLocalAuthorityInitializeEvent?.Invoke();
+                }
+
+                if (isLocalPlayer)
+                {
+                    OnLocalPlayerInitializeEvent?.Invoke();
+                }
+
             }
+            hasInitialized = true;
         }
 
-        public virtual void OnNetworkInitialize()
+        public virtual void OnNetworkInitialize(params Object[] objects)
         {
         }
 

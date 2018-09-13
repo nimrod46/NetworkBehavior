@@ -7,29 +7,19 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class DircetInterfaceInitiatingPacket
+    class DircetInterfaceInitiatingPacket : Packet
     {
-        protected NetworkBehavior net;
         protected object id;
-        public string data;
-        protected PacketID packetID = PacketID.DircetInterfaceInitiating;
-        public DircetInterfaceInitiatingPacket(NetworkBehavior net, int id)
+        public DircetInterfaceInitiatingPacket(NetworkBehavior net, int id) : base(net, PacketID.DircetInterfaceInitiating)
         {
-            this.net = net;
             this.id = id;
             generateData();
         }
 
-        protected virtual void generateData()
+        protected override void generateData()
         {
-            data =
-                ((int)packetID) + NetworkIdentity.packetSpiltter.ToString() +
-                id;
-        }
-
-        public virtual void send()
-        {
-            net.send(data, NetworkInterface.UDP);
+            base.generateData();
+            args.Add(id.ToString());
         }
     }
 }

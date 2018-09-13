@@ -6,27 +6,19 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class LobbyInfoPacket
+    class LobbyInfoPacket : Packet
     {
-        protected NetworkBehavior net;
         public string info;
-        public string data;
-        protected PacketID packetID = PacketID.LobbyInfo;
-        public LobbyInfoPacket(NetworkBehavior net, string info)
+        public LobbyInfoPacket(NetworkBehavior net, string info) : base(net, PacketID.LobbyInfo)
         {
-            this.net = net;
             this.info = info;
             generateData();
         }
 
-        protected virtual void generateData()
+        protected override void generateData()
         {
-            data = ((int)packetID) + NetworkIdentity.packetSpiltter.ToString() + info;
-        }
-
-        public virtual void sendToAPlayer(int port)
-        {
-            net.sendToAPlayer(data, port, NetworkInterface.TCP);
+            base.generateData();
+            args.Add(info);
         }
     }
 }
