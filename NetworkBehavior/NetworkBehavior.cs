@@ -156,7 +156,6 @@ namespace Networking
                     if (isServer)
                     {
                         parsePacket(packet.GetArgs().ToArray(), null, 0, networkInterface);
-                        packet.Send(networkInterface);
                     }
                     else
                     {
@@ -390,10 +389,7 @@ namespace Networking
                         }
                         else
                         {
-                            for (int i = 0; i < clients.Count; i++)
-                            {
-                                directServer.send(orgArgs, clients.Values.ElementAt(i).ip, clients.Values.ElementAt(i).port);
-                            }
+                            directBroadcast(orgArgs);
                         }
                     }
                     break;

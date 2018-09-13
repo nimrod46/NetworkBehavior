@@ -20,7 +20,6 @@ namespace Networking
             base.generateData();
             args.RemoveAt(0);
             args.Insert(0, ((int)packetID).ToString());
-            Console.WriteLine(packetID);
         }
     }
 }
