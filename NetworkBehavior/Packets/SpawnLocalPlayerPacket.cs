@@ -8,7 +8,7 @@ namespace Networking
 {
     class SpawnLocalPlayerPacket : SpawnPacket
     {
-        public SpawnLocalPlayerPacket(NetworkBehavior net, Type instance, int playerID, params string[] spawnParams) : base(net, instance, playerID, playerID, spawnParams)
+        internal SpawnLocalPlayerPacket(NetworkBehavior net, Type instance, int playerID, params string[] spawnParams) : base(net, instance, playerID, playerID, spawnParams)
         {
             packetID = PacketID.SpawnLocalPlayer;
             args.Clear();

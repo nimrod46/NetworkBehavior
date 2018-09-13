@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class DircetInterfaceInitiatingPacket : Packet
+    internal class DircetInterfaceInitiatingPacket : Packet
     {
         protected object id;
         public DircetInterfaceInitiatingPacket(NetworkBehavior net, int id) : base(net, PacketID.DircetInterfaceInitiating)

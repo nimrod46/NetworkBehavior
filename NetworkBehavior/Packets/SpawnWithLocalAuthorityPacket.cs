@@ -8,7 +8,7 @@ namespace Networking
 {
     class SpawnWithLocalAuthorityPacket : SpawnPacket
     {
-        public SpawnWithLocalAuthorityPacket(NetworkBehavior net, Type instance, int ownerID, int id, params string[] spwanParams) : base(net, instance, id, ownerID, spwanParams)
+        internal SpawnWithLocalAuthorityPacket(NetworkBehavior net, Type instance, int ownerID, int id, params string[] spwanParams) : base(net, instance, id, ownerID, spwanParams)
         {
             packetID = PacketID.SpawnLocalPlayer;
         }    

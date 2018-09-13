@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class BeginSynchronizationPacket : Packet
+    internal class BeginSynchronizationPacket : Packet
     {
         public BeginSynchronizationPacket(NetworkBehavior net) : base(net, PacketID.BeginSynchronization)
         {

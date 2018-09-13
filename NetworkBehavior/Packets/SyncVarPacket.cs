@@ -11,7 +11,7 @@ namespace Networking
     {
         protected LocationInterceptionArgs locationArg;
         protected int id;
-        public SyncVarPacket(NetworkBehavior net, LocationInterceptionArgs locationArg, int id) : base (net, PacketID.SyncVar)
+        internal SyncVarPacket(NetworkBehavior net, LocationInterceptionArgs locationArg, int id) : base (net, PacketID.SyncVar)
         {
             this.net = net;
             this.locationArg = locationArg;

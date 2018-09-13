@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    public abstract class Packet
+    internal abstract class Packet
     {
         protected NetworkBehavior net;
         protected PacketID packetID;

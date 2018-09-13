@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class CommandPacket : MethodPacket
+    internal class CommandPacket : MethodPacket
     {
         public CommandPacket(NetworkBehavior net, MethodInterceptionArgs args, int id) : base (net, args, true, PacketID.Command, id)
         {

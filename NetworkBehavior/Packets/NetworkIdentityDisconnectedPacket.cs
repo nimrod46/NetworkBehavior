@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class NetworkIdentityDisconnectedPacket : Packet
+    internal class NetworkIdentityDisconnectedPacket : Packet
     {
         private int playerID;
         public NetworkIdentityDisconnectedPacket(NetworkBehavior net , int playerID) : base(net, PacketID.NetworkIdentityDisconnected)

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    abstract class MethodPacket : Packet
+    internal abstract class MethodPacket : Packet
     {
         protected MethodInterceptionArgs methodArgs;
         protected bool invokeInServer;

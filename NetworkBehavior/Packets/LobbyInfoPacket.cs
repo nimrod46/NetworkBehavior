@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class LobbyInfoPacket : Packet
+    internal class LobbyInfoPacket : Packet
     {
         public string info;
         public LobbyInfoPacket(NetworkBehavior net, string info) : base(net, PacketID.LobbyInfo)

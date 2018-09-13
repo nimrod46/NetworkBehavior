@@ -12,7 +12,7 @@ namespace Networking
         protected object id;
         protected object ownerId;
         protected string[] spawnParams;
-        public SpawnPacket(NetworkBehavior net, Type instance, int id, int ownerId, params string[] spawnParams) : base(net, PacketID.Spawn)
+        internal SpawnPacket(NetworkBehavior net, Type instance, int id, int ownerId, params string[] spawnParams) : base(net, PacketID.Spawn)
         {
             this.net = net;
             this.instance = instance;
