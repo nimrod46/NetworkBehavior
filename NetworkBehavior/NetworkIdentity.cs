@@ -17,7 +17,7 @@ namespace Networking
         internal static int lastId = 0;
         public static Dictionary<int, NetworkIdentity> entities = new Dictionary<int, NetworkIdentity>();
 
-        internal delegate void NetworkInitialize(params Object[] objects);
+        internal delegate void NetworkInitialize();
         internal event NetworkInitialize OnNetworkInitializeEvent;
         internal delegate void HasLocalAuthorityInitialize();
         internal event HasLocalAuthorityInitialize OnHasLocalAuthorityInitializeEvent;
@@ -46,13 +46,13 @@ namespace Networking
 
 
 
-        internal void ThreadPreformEvents(params Object[] objects)
+        internal void ThreadPreformEvents()
         {
             //new Thread(new ThreadStart(PreformEvents)).Start();
-            PreformEvents(objects);
+            PreformEvents();
         }
 
-        private void PreformEvents(params Object[] objects)
+        private void PreformEvents()
         {
             lock (entities)
             {
@@ -60,7 +60,7 @@ namespace Networking
                 {
                     entities.Add(id, this);
                 }
-                OnNetworkInitializeEvent?.Invoke(objects);
+                OnNetworkInitializeEvent?.Invoke();
                 if (hasAuthority)
                 {
                     OnHasLocalAuthorityInitializeEvent?.Invoke();
@@ -75,7 +75,7 @@ namespace Networking
             hasInitialized = true;
         }
 
-        public virtual void OnNetworkInitialize(params Object[] objects)
+        public virtual void OnNetworkInitialize()
         {
         }
 

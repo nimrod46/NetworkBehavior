@@ -117,8 +117,8 @@ namespace Networking
                 SpawnPacket spawnPacket;
                 foreach (NetworkIdentity i in NetworkIdentity.entities.Values)
                 {
-                    var args = i.GetType().GetProperties().Where(prop => prop.Name.ToLower().Substring(0, 4).Equals("sync")).Select(p => p.GetValue(i)).ToArray().Cast<String>().ToArray();
-                    
+                    Dictionary<string,string> valuesByFields = i.GetType().GetProperties().Where(prop => prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToDictionary(p => p.Name.ToString(), p => p.GetValue(i).ToString());
+                    var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
                     spawnPacket = new SpawnPacket(this, getNetworkClassTypeByName(i.GetType().FullName), i.id, i.ownerId, args); //Spawn all existing clients in the remote client
                     spawnPacket.SendToAUser(NetworkInterface.TCP, port);
                 }
@@ -403,12 +403,17 @@ namespace Networking
                     }
                     identity.id = int.Parse(args[args.Length - 1]);
                     identity.isInServer = isServer;
-                    Object[] objs = new object[args.Length - 1 - 2];
+                    string[] valuesByFields = new string[args.Length - 1 - 2];
                     for (int i = 2; i < args.Length - 1; i++)
                     {
-                        objs[i - 2] = args[i];
+                        valuesByFields[i - 2] = args[i];
                     }
-                    identity.ThreadPreformEvents(objs);
+                    if (valuesByFields.Length != 0)
+                    {
+                        Dictionary<string, string> valuesByFieldsDict = valuesByFields.Select(v => v.Split('+')).ToDictionary(k => k[0], v => v[1]);
+                        identity.GetType().GetProperties().ToArray().Where(p => valuesByFieldsDict.Keys.Contains(p.Name)).ToList().ForEach(p => p.SetValue(identity, Convert.ChangeType(valuesByFieldsDict[p.Name], p.PropertyType)));
+                    }
+                    identity.ThreadPreformEvents();
                     Console.WriteLine("New entity at: " + args[args.Length - 1] + " " + args[0]);
                     break;
                 case (int)PacketID.SpawnLocalPlayer:
@@ -532,9 +537,10 @@ namespace Networking
             {
                 return Activator.CreateInstance(getNetworkClassTypeByName(fullName));
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 Console.WriteLine("Cannot find " + fullName + "class name, did you register the class?");
+                Console.WriteLine(e);
                 Environment.Exit(0);
                 return null;
             }
@@ -550,38 +556,69 @@ namespace Networking
             return null;
         }
 
-        public NetworkIdentity spawnWithServerAuthority(Type instance, params String[] args)
+        public NetworkIdentity spawnWithServerAuthority(Type instance, NetworkIdentity identity)
         {
             if (!isServer)
             {
                 throw new Exception("Cannot spawn network instance on client");
             }
+            if (identity != null && identity.hasInitialized)
+            {
+                throw new Exception("Cannot spawn network instance that is already in use");
+            }
+
             int id = NetworkIdentity.lastId + 1;
             NetworkIdentity.lastId++;
-            NetworkIdentity identity = Activator.CreateInstance(instance) as NetworkIdentity;
+            string[] args =  null;
+            if (identity != null)
+            {
+                Dictionary<string, string> valuesByFields = identity.GetType().GetProperties().Where(prop => prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToDictionary(p => p.Name.ToString(), p => p.GetValue(identity).ToString());
+                args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
+            } 
+            else
+            {
+                identity = Activator.CreateInstance(instance) as NetworkIdentity;
+            }
             identity.id = id;
             identity.ownerId = port;
             identity.hasAuthority = true;
             identity.isInServer = true;
-            identity.ThreadPreformEvents(args);
+            identity.ThreadPreformEvents();
+            
             SpawnPacket packet = new SpawnPacket(this, instance, id, port, args);
             packet.Send(NetworkInterface.TCP);
             return identity;
         }
 
-        public NetworkIdentity spawnWithClientAuthority(Type instance, int clientId, params String[] args)
+        public NetworkIdentity spawnWithClientAuthority(Type instance, int clientId, NetworkIdentity identity)
         {
             if (!isServer)
             {
                 throw new Exception("Cannot spawn network instance on client");
             }
+
+            if (identity != null && identity.hasInitialized)
+            {
+                throw new Exception("Cannot spawn network instance that is already in use");
+            }
+
             int id = NetworkIdentity.lastId + 1;
             NetworkIdentity.lastId++;
-            NetworkIdentity identity = Activator.CreateInstance(instance) as NetworkIdentity;
+            string[] args =  null;
+            if (identity != null)
+            {
+                identity = Activator.CreateInstance(instance) as NetworkIdentity;
+                Dictionary<string, string> valuesByFields = identity.GetType().GetProperties().Where(prop => prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToDictionary(p => p.Name.ToString(), p => p.GetValue(identity).ToString());
+                args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
+            }
+            else
+            {
+                identity = Activator.CreateInstance(instance) as NetworkIdentity;
+            }
             identity.id = id;
             identity.ownerId = clientId;
             identity.isInServer = true;
-            identity.ThreadPreformEvents(args);
+            identity.ThreadPreformEvents();
             SpawnPacket packet = new SpawnPacket(this, instance, id, clientId, args);
             packet.Send(NetworkInterface.TCP);
             return identity;
