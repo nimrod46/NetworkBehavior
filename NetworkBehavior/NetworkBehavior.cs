@@ -117,7 +117,7 @@ namespace Networking
                 SpawnPacket spawnPacket;
                 foreach (NetworkIdentity i in NetworkIdentity.entities.Values)
                 {
-                    Dictionary<string,string> valuesByFields = i.GetType().GetProperties().Where(prop => prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToDictionary(p => p.Name.ToString(), p => p.GetValue(i).ToString());
+                    Dictionary<string,string> valuesByFields = i.GetType().GetProperties().Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToDictionary(p => p.Name.ToString(), p => p.GetValue(i).ToString());
                     var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
                     spawnPacket = new SpawnPacket(this, getNetworkClassTypeByName(i.GetType().FullName), i.id, i.ownerId, args); //Spawn all existing clients in the remote client
                     spawnPacket.SendToAUser(NetworkInterface.TCP, port);
