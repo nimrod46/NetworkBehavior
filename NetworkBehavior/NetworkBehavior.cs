@@ -343,7 +343,10 @@ namespace Networking
                         eP.port = port;
                         clients[int.Parse(args[0])] = eP;
                     }
-
+                    else
+                    {
+                        Console.Error.WriteLine("UDP NOT init for " + port);
+                    }
                     break;
                 case (int)PacketID.BroadcastMethod:
                     if (isServer)
@@ -380,6 +383,7 @@ namespace Networking
                     {
                         return;
                     }
+                    
                     SyncVar.networkInvoke(identity, args);
                     if (isServer)
                     {
@@ -421,7 +425,7 @@ namespace Networking
                     //player = o as NetworkIdentity;
                     player.id = int.Parse(args[1]);
                     DircetInterfaceInitiatingPacket packet = new DircetInterfaceInitiatingPacket(this, player.id);
-                    packet.Send(NetworkInterface.TCP);
+                    packet.Send(NetworkInterface.UDP);
                     player.ownerId = int.Parse(args[1]);
                     player.hasAuthority = true;
                     player.isInServer = isServer;
