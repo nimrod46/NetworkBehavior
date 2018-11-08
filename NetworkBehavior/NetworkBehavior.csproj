@@ -66,7 +66,6 @@
     <Compile Include="Packets\MethodPacket.cs" />
     <Compile Include="Packets\NetworkIdentityDisconnectedPacket.cs" />
     <Compile Include="Packets\Packet.cs" />
-    <Compile Include="Packets\SpawnWithLocalAuthorityPacket.cs" />
     <Compile Include="Packets\SpawnLocalPlayerPacket.cs" />
     <Compile Include="Packets\SpawnPacket.cs" />
     <Compile Include="Packets\SyncVarPacket.cs" />

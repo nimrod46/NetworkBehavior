@@ -1,26 +1,26 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Symbols LinesOfCode="917" PostSharpLinesOfCode="0" EnhancedTypesCount="5" SchemaVersion="1" PostSharpVersion="4.3.33.0" xmlns="http://schemas.postsharp.org/2.0/symbols">
+<Symbols LinesOfCode="918" PostSharpLinesOfCode="0" EnhancedTypesCount="5" SchemaVersion="1" PostSharpVersion="4.3.33.0" xmlns="http://schemas.postsharp.org/2.0/symbols">
   <Class Class="#1=T:[PostSharp]PostSharp.Serialization.PSerializableAttribute">
-    <Instance Declaration="#2=T:[NetworkBehavior]Networking.MethodNetworkAttribute" Id="bd65d63e555c3409">
+    <Instance Declaration="#2=T:[NetworkBehavior]Networking.MethodNetworkAttribute" Id="bd65d63e69bfb399">
       <Target />
     </Instance>
-    <Instance Declaration="#3=T:[NetworkBehavior]Networking.Command" Id="bd65d63e4a3aab16">
+    <Instance Declaration="#3=T:[NetworkBehavior]Networking.Command" Id="bd65d63e6c7b0f4b">
       <Target />
     </Instance>
-    <Instance Declaration="#4=T:[NetworkBehavior]Networking.BroadcastMethod" Id="bd65d63e811f6482">
+    <Instance Declaration="#4=T:[NetworkBehavior]Networking.BroadcastMethod" Id="bd65d63e0a74c23a">
       <Target />
     </Instance>
-    <Instance Declaration="#5=T:[NetworkBehavior]Networking.SyncVar" Id="bd65d63e7770bdd1">
+    <Instance Declaration="#5=T:[NetworkBehavior]Networking.SyncVar" Id="bd65d63e4ab60328">
       <Target />
     </Instance>
   </Class>
   <Class Class="#4">
-    <Instance Declaration="#6=M:[NetworkBehavior]Networking.NetworkIdentity::Disconnected()" Id="bd65d63eb33aeeaa">
+    <Instance Declaration="#6=M:[NetworkBehavior]Networking.NetworkIdentity::Disconnected()" Id="bd65d63ee831db7c">
       <Target>
         <JoinPoint Description="#7=Intercepted by OnInvoke" Ordinal="0" />
       </Target>
     </Instance>
-    <Instance Declaration="#8=M:[NetworkBehavior]Networking.NetworkIdentity::Destroy()" Id="bd65d63eb620cca0">
+    <Instance Declaration="#8=M:[NetworkBehavior]Networking.NetworkIdentity::Destroy()" Id="bd65d63eb6b95408">
       <Target>
         <JoinPoint Description="#7" />
       </Target>

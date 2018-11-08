@@ -31,6 +31,7 @@ namespace Networking
         public bool isLocalPlayer = false;
         public bool isInServer = false;
         public bool hasInitialized = false;
+        public bool hasFieldsBeenInitialized = false;
         public int id;
         public int ownerId;
         public NetworkIdentity()

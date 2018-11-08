@@ -117,8 +117,9 @@ namespace Networking
                 SpawnPacket spawnPacket;
                 foreach (NetworkIdentity i in NetworkIdentity.entities.Values)
                 {
-                    Dictionary<string,string> valuesByFields = i.GetType().GetProperties().Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToDictionary(p => p.Name.ToString(), p => p.GetValue(i).ToString());
+                    Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(i);
                     var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
+                    print(args);
                     spawnPacket = new SpawnPacket(this, getNetworkClassTypeByName(i.GetType().FullName), i.id, i.ownerId, args); //Spawn all existing clients in the remote client
                     spawnPacket.SendToAUser(NetworkInterface.TCP, port);
                 }
@@ -399,48 +400,25 @@ namespace Networking
                     break;
                 case (int)PacketID.Spawn:
                     o = spawnObjectLocaly(args[0]);
-                    identity = o as NetworkIdentity;
-                    identity.ownerId = int.Parse(args[1]);
-                    if (identity.ownerId == player.id)
-                    {
-                        identity.hasAuthority = true;
-                    }
-                    identity.id = int.Parse(args[args.Length - 1]);
-                    identity.isInServer = isServer;
-                    string[] valuesByFields = new string[args.Length - 1 - 2];
+                    string[] valuesOfFields = new string[args.Length - 1 - 2];
                     for (int i = 2; i < args.Length - 1; i++)
                     {
-                        valuesByFields[i - 2] = args[i];
+                        valuesOfFields[i - 2] = args[i];
                     }
-                    if (valuesByFields.Length != 0)
-                    {
-                        Dictionary<string, string> valuesByFieldsDict = valuesByFields.Select(v => v.Split('+')).ToDictionary(k => k[0], v => v[1]);
-                        identity.GetType().GetProperties().ToArray().Where(p => valuesByFieldsDict.Keys.Contains(p.Name)).ToList().ForEach(p => p.SetValue(identity, Convert.ChangeType(valuesByFieldsDict[p.Name], p.PropertyType)));
-                    }
-                    identity.ThreadPreformEvents();
-                    Console.WriteLine("New entity at: " + args[args.Length - 1] + " " + args[0]);
+                    print(valuesOfFields);
+                    identity = o as NetworkIdentity;
+                    InitIdentityLocally(identity, int.Parse(args[1]), int.Parse(args[args.Length - 1]), player.id == int.Parse(args[1]), false, this.port == int.Parse(args[args.Length - 1]), valuesOfFields);
                     break;
                 case (int)PacketID.SpawnLocalPlayer:
-                    //o = spawnObjectLocaly(srts[0]);
-                    //player = o as NetworkIdentity;
-                    player.id = int.Parse(args[1]);
+                    valuesOfFields = new string[args.Length - 1 - 2];
+                    for (int i = 2; i < args.Length - 1; i++)
+                    {
+                        valuesOfFields[i - 2] = args[i];
+                    }
+                    InitIdentityLocally(player, int.Parse(args[1]), int.Parse(args[1]), true, true, this.port == int.Parse(args[1]), valuesOfFields);
+                    isLocalPlayerSpawned = true;
                     DircetInterfaceInitiatingPacket packet = new DircetInterfaceInitiatingPacket(this, player.id);
                     packet.Send(NetworkInterface.UDP);
-                    player.ownerId = int.Parse(args[1]);
-                    player.hasAuthority = true;
-                    player.isInServer = isServer;
-                    player.isLocalPlayer = true;
-                    player.ThreadPreformEvents();
-                    isLocalPlayerSpawned = true;
-                    break;
-                case (int)PacketID.SpawnWithLocalAuthority:
-                    o = spawnObjectLocaly(args[0]);
-                    identity = o as NetworkIdentity;
-                    identity.ownerId = int.Parse(args[1]);
-                    identity.id = int.Parse(args[2]);
-                    identity.hasAuthority = true;
-                    identity.isInServer = isServer;
-                    identity.ThreadPreformEvents();
                     break;
                 case (int)PacketID.BeginSynchronization:
                     Synchronize(ip, port);
@@ -449,6 +427,8 @@ namespace Networking
                 //  clientDsiconnected(int.Parse(srts[0]));
                 // break;
                 default:
+                    Console.Error.WriteLine("Invalid packet has been received!");
+                    print(args);
                     break;
             }
         }
@@ -576,22 +556,35 @@ namespace Networking
             string[] args =  null;
             if (identity != null)
             {
-                Dictionary<string, string> valuesByFields = identity.GetType().GetProperties().Where(prop => prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToDictionary(p => p.Name.ToString(), p => p.GetValue(identity).ToString());
+                Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(identity);
                 args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
             } 
             else
             {
                 identity = Activator.CreateInstance(instance) as NetworkIdentity;
             }
-            identity.id = id;
-            identity.ownerId = port;
-            identity.hasAuthority = true;
-            identity.isInServer = true;
-            identity.ThreadPreformEvents();
-            
+            InitIdentityLocally(identity, port, id, true, true, true, args);
             SpawnPacket packet = new SpawnPacket(this, instance, id, port, args);
             packet.Send(NetworkInterface.TCP);
             return identity;
+        }
+
+        private void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, bool hasAuthority, bool isLocalPlayer, bool isServer, params string[] valuesByFields)
+        {
+            identity.ownerId = ownerID;
+            identity.hasAuthority = hasAuthority;
+            identity.id = id;
+            identity.isInServer = this.isServer;
+            identity.isLocalPlayer = isLocalPlayer;
+            identity.isServer = isServer;
+            if (valuesByFields.Length != 0)
+            {
+                Dictionary<string, string> valuesByFieldsDict = valuesByFields.Select(v => v.Split('+')).ToDictionary(k => k[0], v => v[1]);
+                SetObjectFieldsByValues(identity, valuesByFieldsDict);
+                identity.hasFieldsBeenInitialized = true;
+            }
+            identity.ThreadPreformEvents();
+            Console.WriteLine("New entity at: " + id + " " + ownerID);
         }
 
         public NetworkIdentity spawnWithClientAuthority(Type instance, int clientId, NetworkIdentity identity)
@@ -611,8 +604,7 @@ namespace Networking
             string[] args =  null;
             if (identity != null)
             {
-                identity = Activator.CreateInstance(instance) as NetworkIdentity;
-                Dictionary<string, string> valuesByFields = identity.GetType().GetProperties().Where(prop => prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToDictionary(p => p.Name.ToString(), p => p.GetValue(identity).ToString());
+                Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(identity);
                 args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
             }
             else
@@ -628,6 +620,31 @@ namespace Networking
             return identity;
         }
 
+            const BindingFlags getBindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic;
+        private Dictionary<string, string> GetValuesByFieldsFromObject(object obj)
+        {
+            Type type = obj.GetType();
+            return type.GetFields(getBindingFlags).Cast<MemberInfo>().Concat(type.GetProperties(getBindingFlags)).Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).
+                ToDictionary(p => p.Name.ToString(), p => (p is FieldInfo) ? ((FieldInfo) p).GetValue(obj).ToString() : ((PropertyInfo)p).GetValue(obj).ToString());
+        }
+
+        private void SetObjectFieldsByValues(object obj, Dictionary<string, string> valuesByFields)
+        {
+            Type type = obj.GetType(); ;
+            type.GetFields(getBindingFlags).Cast<MemberInfo>().Concat(type.GetProperties(getBindingFlags)).Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).
+                Where(p => valuesByFields.Keys.Contains(p.Name)).ToList().ForEach(p =>
+                {
+                    if (p is FieldInfo)
+                    {
+                        ((FieldInfo)p).SetValue(obj, Convert.ChangeType(valuesByFields[p.Name], ((FieldInfo)p).FieldType));
+                    }
+                    else
+                    {
+                        ((PropertyInfo)p).SetValue(obj, Convert.ChangeType(valuesByFields[p.Name], ((PropertyInfo)p).PropertyType));
+                    }
+                });
+        }
+    
         internal void directBroadcast(string[] args, params int[] ports)
         {
             foreach (EndPoint endPoint in clients.Values)
