@@ -119,7 +119,6 @@ namespace Networking
                 {
                     Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(i);
                     var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
-                    print(args);
                     spawnPacket = new SpawnPacket(this, getNetworkClassTypeByName(i.GetType().FullName), i.id, i.ownerId, args); //Spawn all existing clients in the remote client
                     spawnPacket.SendToAUser(NetworkInterface.TCP, port);
                 }
@@ -405,7 +404,6 @@ namespace Networking
                     {
                         valuesOfFields[i - 2] = args[i];
                     }
-                    print(valuesOfFields);
                     identity = o as NetworkIdentity;
                     InitIdentityLocally(identity, int.Parse(args[1]), int.Parse(args[args.Length - 1]), player.id == int.Parse(args[1]), false, this.port == int.Parse(args[args.Length - 1]), valuesOfFields);
                     break;
