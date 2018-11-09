@@ -27,21 +27,7 @@ namespace Networking
         {
             return new List<string>(args);
         }
-        /*
-        {
-            
-            data =
-                ((int)packetID) + NetworkIdentity.packetSpiltter.ToString() +
-                instance.FullName + NetworkIdentity.argsSplitter.ToString() +
-                ownerId + NetworkIdentity.argsSplitter.ToString();
-            foreach (object obj in args)
-            {
-                data += obj.ToString() + NetworkIdentity.argsSplitter.ToString();
-            }
-            data += id;
-            
-        }
-        */
+        
         internal void Send(NetworkInterface networkInterface, params int[] ports)
         {
             if (net.isServer)

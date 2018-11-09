@@ -27,25 +27,11 @@ namespace Networking
             base.generateData();
             args.Add(instance.FullName);
             args.Add(ownerId.ToString());
-            args.AddRange(spawnParams);
+            if (spawnParams != null)
+            {
+                args.AddRange(spawnParams);
+            }
             args.Add(id.ToString());
         }
-
-        /*
-        public virtual void sendToAPlayer(NetworkInterface networkInterface, int port)
-        {
-            sendToAPlayer(port, networkInterface);
-        }
-
-        public virtual void send(NetworkInterface networkInterface)
-        {
-            send(networkInterface);
-        }
-
-        public virtual void send(NetworkInterface networkInterface, int port)
-        {
-            send(port, networkInterface);
-        }
-        */
     }
 }
