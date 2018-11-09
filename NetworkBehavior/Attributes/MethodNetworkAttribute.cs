@@ -21,7 +21,7 @@ namespace Networking
     {
         public NetworkInterface networkInterface = NetworkInterface.TCP;
         public bool invokeInServer = true;
-        internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, int id);
+        internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
         internal static event networkingInvokeEvent onNetworkingInvoke;
         internal static Dictionary<string, MethodBase> methods = new Dictionary<string, MethodBase>();
         internal PacketID packetID;
@@ -50,7 +50,7 @@ namespace Networking
                 }
             }
             */
-            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, invokeInServer,(args.Instance as NetworkIdentity).id);
+            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, invokeInServer, args.Instance as NetworkIdentity);
         }
 
         public override void RuntimeInitialize(MethodBase method)
@@ -76,14 +76,7 @@ namespace Networking
             {
                 t = t.BaseType;
             }
-            /*
-            if (!methods.TryGetValue(net.GetType().ba + methodName, out method))
-            {
-                throw new Exception("MethodNetworkAttribute: no method name " + "\"" + methodName + "\"" + " found in: " + net.GetType().Name);
-            }
-            */
-            // try
-            //  {
+           
             object[] newArgs = null;
             if (args.Length != 0 && (string)args[0] != "")
             {
@@ -101,12 +94,6 @@ namespace Networking
                 NetworkIdentity.interrupt = false;
                 method.Invoke(net, newArgs);
             }
-
-            // }
-            // catch (Exception e)
-            // {
-            //     throw e;
-            //  }
         }
     }
 }

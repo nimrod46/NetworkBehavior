@@ -73,6 +73,8 @@ namespace Networking
         public event ConnectionLobbyAcceptedEventHandler OnConnectionLobbyAcceptedEvent;
         public delegate void LobbyInfoEventHandler(string info);
         public event LobbyInfoEventHandler OnLobbyInfoEvent;
+        public delegate void PlayerSynchronizedEventHandler(NetworkIdentity client);
+        public event PlayerSynchronizedEventHandler OnPlayerSynchronized;
 
         public NetworkBehavior(NetworkIdentity player, string ip, int port)
         {
@@ -137,6 +139,7 @@ namespace Networking
                 spawnPacket = new SpawnPacket(this, player.GetType(), identity.id, identity.ownerId);//spawn the client player in all other clients
                 spawnPacket.Send(NetworkInterface.TCP, port);
                 //Console.WriteLine("spawned the client player in all other clients");
+                OnPlayerSynchronized?.Invoke(identity);
             }
         }
 
@@ -167,7 +170,7 @@ namespace Networking
             }
         }
 
-        private void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, int id)
+        private void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
             if (!isConnected)
             {
@@ -177,7 +180,7 @@ namespace Networking
             switch (packetID)
             {
                 case PacketID.BroadcastMethod:
-                    packet = new BroadcastMethodPacket(this, args, invokeInServer, id);
+                    packet = new BroadcastMethodPacket(this, args, invokeInServer, networkIdentity.id);
                     if (isServer)
                     {
                         parsePacket(packet.GetArgs().ToArray(), null, 0, networkInterface);
@@ -188,10 +191,10 @@ namespace Networking
                     }
                     break;
                 case PacketID.Command:
-                    packet = new CommandPacket(this, args, id);
+                    packet = new CommandPacket(this, args, networkIdentity.id);
                     if (isServer)
                     {
-                        parsePacket(packet.GetArgs().ToArray(), null, 0, networkInterface);
+                        packet.SendToAUser(networkInterface, networkIdentity.ownerId);
                     }
                     else
                     {
@@ -261,8 +264,6 @@ namespace Networking
             isConnected = true;
             isServer = true;
             registerEvents();
-            //NetworkIdentity identity = Activator.CreateInstance(player.GetType()) as NetworkIdentity;
-            //player = identity;
             player.id = port;
             player.ownerId = port;
             player.isServer = true;
@@ -277,8 +278,6 @@ namespace Networking
 
         private void Server_OnClientDisconnectedEvent(string ip, int port)
         {
-            //NetworkIdentityDisconnectedPacket packet = new NetworkIdentityDisconnectedPacket(this, port);
-            //packet.send(NetworkInterface.TCP);
             clientDsiconnected(port);
         }
 
