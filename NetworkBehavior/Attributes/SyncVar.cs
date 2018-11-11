@@ -16,12 +16,13 @@ namespace Networking
     [PSerializable]
     public class SyncVar : LocationInterceptionAspect
     {
-        internal delegate void networkingInvokeEvent(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, int id);
+        internal delegate void networkingInvokeEvent(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity id);
         internal static event networkingInvokeEvent onNetworkingInvoke;
         internal static Dictionary<string, LocationInfo> fields = new Dictionary<string, LocationInfo>();
         internal static Dictionary<string, string> hooks = new Dictionary<string, string>();
         public NetworkInterface networkInterface = NetworkInterface.TCP;
         public string hook = "";
+        public bool invokeInServer = true;
         private PacketID packetID = PacketID.SyncVar;
 
         public override void OnSetValue(LocationInterceptionArgs args)
@@ -44,7 +45,7 @@ namespace Networking
             {
                 throw new Exception("Arguments cannot be none value type");
             }
-            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, (args.Instance as NetworkIdentity).id);
+            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, invokeInServer, args.Instance as NetworkIdentity);
         }
 
         public override void RuntimeInitialize(LocationInfo locationInfo)
@@ -61,7 +62,7 @@ namespace Networking
             }
         }
 
-        internal static void networkInvoke(NetworkIdentity net, object[] args)
+        internal static void networkInvoke(NetworkIdentity net, object[] args, bool isInServer)
         {
             LocationInfo field;
             string fieldName = args[0].ToString();
@@ -73,8 +74,6 @@ namespace Networking
                 throw new Exception("SyncVar: no field name " + "\"" + fieldName + "\"" + " found.");
             }
 
-            //  try
-            // {
             object newArg = Operations.getValueAsObject(field.LocationType.Name, args[0]);
 
             lock (NetworkIdentity.scope)
@@ -82,18 +81,23 @@ namespace Networking
                 NetworkIdentity.interrupt = false;
                 field.SetValue(net, newArg);
             }
-            string hookMethod;
-            if (hooks.TryGetValue(fieldName, out hookMethod))
-            {
-                MethodInfo method = net.GetType().GetMethod(hookMethod);
-                method.Invoke(net, null);
-            }
-            //  }
-            // catch (Exception e)
-            // {
 
-            // throw e;
-            // }
+            if (Boolean.TryParse(args[1].ToString(), out bool invoke))
+            {
+                if (!isInServer  || invoke)
+                {
+                    if (hooks.TryGetValue(fieldName, out string hookMethod))
+                    {
+                        MethodInfo method = net.GetType().GetMethod(hookMethod);
+                        method.Invoke(net, null);
+                    }
+                }
+            } 
+            else
+            {
+                Console.Error.WriteLine("Could not activated hooked method!");
+            }
+
         }
     }
 }

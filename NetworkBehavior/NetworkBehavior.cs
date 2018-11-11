@@ -125,16 +125,15 @@ namespace Networking
                     spawnPacket.SendToAUser(NetworkInterface.TCP, port);
                 }
                 //Console.WriteLine("Spawn all existing clients");
-                NetworkIdentity identity = Activator.CreateInstance(player.GetType()) as NetworkIdentity;//Spawn the client player locally
-                identity.id = port;
-                identity.ownerId = port;
-                identity.isInServer = true;
-                identity.ThreadPreformEvents();
-                clients.Add(port, new EndPoint(identity, ip));
-               // Console.WriteLine("spawned the client player locally");
+
                 SpawnLocalPlayerPacket packet = new SpawnLocalPlayerPacket(this, player.GetType(), port);//spawn the client player in the remote client
                 packet.SendToAUser(NetworkInterface.TCP, port);
                 //Console.WriteLine("spawned the client player in the remote client");
+
+                NetworkIdentity identity = Activator.CreateInstance(player.GetType()) as NetworkIdentity;//Spawn the client player locally
+                InitIdentityLocally(identity, port, port, false, false, true);
+                clients.Add(port, new EndPoint(identity, ip));
+                // Console.WriteLine("spawned the client player locally");
 
                 spawnPacket = new SpawnPacket(this, player.GetType(), identity.id, identity.ownerId);//spawn the client player in all other clients
                 spawnPacket.Send(NetworkInterface.TCP, port);
@@ -144,7 +143,7 @@ namespace Networking
         }
 
 
-        private void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, int id)
+        private void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
             if (!isConnected)
             {
@@ -155,7 +154,7 @@ namespace Networking
             switch (packetID)
             {
                 case PacketID.SyncVar:
-                    packet = new SyncVarPacket(this, args, id);
+                    packet = new SyncVarPacket(this, args, invokeInServer, networkIdentity.id);
                     if (isServer)
                     {
                         parsePacket(packet.GetArgs().ToArray(), null, 0, networkInterface);
@@ -264,13 +263,10 @@ namespace Networking
             isConnected = true;
             isServer = true;
             registerEvents();
-            player.id = port;
-            player.ownerId = port;
-            player.isServer = true;
+
             player.isInServer = true;
-            player.hasAuthority = true;
-            player.isLocalPlayer = true;
-            player.ThreadPreformEvents();
+            InitIdentityLocally(player, port, port, true, true, true);
+
             server.OnConnectionAcceptedEvent += Server_connectionAcceptedEvent;
             server.OnConnectionLobbyAcceptedEvent += Server_OnConnectionLobbyAcceptedEvent;
             server.OnClientDisconnectedEvent += Server_OnClientDisconnectedEvent;
@@ -383,7 +379,7 @@ namespace Networking
                         return;
                     }
                     
-                    SyncVar.networkInvoke(identity, args);
+                    SyncVar.networkInvoke(identity, args, this.isServer);
                     if (isServer)
                     {
                         if (networkInterface == NetworkInterface.TCP)
@@ -560,20 +556,20 @@ namespace Networking
             {
                 identity = Activator.CreateInstance(instance) as NetworkIdentity;
             }
-            InitIdentityLocally(identity, port, id, true, true, true, args);
             SpawnPacket packet = new SpawnPacket(this, instance, id, port, args);
             packet.Send(NetworkInterface.TCP);
+            InitIdentityLocally(identity, port, id, true, true, true, args);
             return identity;
         }
 
-        private void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, bool hasAuthority, bool isLocalPlayer, bool isServer, params string[] valuesByFields)
+        private void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, bool hasAuthority, bool isLocalPlayer, bool isServerAuthority, params string[] valuesByFields)
         {
             identity.ownerId = ownerID;
             identity.hasAuthority = hasAuthority;
             identity.id = id;
             identity.isInServer = this.isServer;
             identity.isLocalPlayer = isLocalPlayer;
-            identity.isServer = isServer;
+            identity.isServerAuthority = isServerAuthority;
             if (valuesByFields.Length != 0)
             {
                 Dictionary<string, string> valuesByFieldsDict = valuesByFields.Select(v => v.Split('+')).ToDictionary(k => k[0], v => v[1]);
@@ -608,10 +604,7 @@ namespace Networking
             {
                 identity = Activator.CreateInstance(instance) as NetworkIdentity;
             }
-            identity.id = id;
-            identity.ownerId = clientId;
-            identity.isInServer = true;
-            identity.ThreadPreformEvents();
+            InitIdentityLocally(identity, clientId, id, false, false, true, args);
             SpawnPacket packet = new SpawnPacket(this, instance, id, clientId, args);
             packet.Send(NetworkInterface.TCP);
             return identity;

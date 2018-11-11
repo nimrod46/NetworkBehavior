@@ -11,11 +11,13 @@ namespace Networking
     {
         protected LocationInterceptionArgs locationArg;
         protected int id;
-        internal SyncVarPacket(NetworkBehavior net, LocationInterceptionArgs locationArg, int id) : base (net, PacketID.SyncVar)
+        protected bool invokeInServer;
+        internal SyncVarPacket(NetworkBehavior net, LocationInterceptionArgs locationArg, bool invokeInServer, int id) : base (net, PacketID.SyncVar)
         {
             this.net = net;
             this.locationArg = locationArg;
             this.id = id;
+            this.invokeInServer = invokeInServer;
             generateData();
         }
 
@@ -24,6 +26,7 @@ namespace Networking
             base.generateData();
             args.Add(locationArg.Location.Name);
             args.Add(locationArg.Value.ToString());
+            args.Add(invokeInServer.ToString());
             args.Add(id.ToString());
         }
     }

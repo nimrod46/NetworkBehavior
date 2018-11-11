@@ -26,7 +26,7 @@ namespace Networking
         public delegate void BeginSynchronization();
         public event BeginSynchronization OnBeginSynchronization;
 
-        public bool isServer = false;
+        public bool isServerAuthority = false;
         public bool hasAuthority = false;
         public bool isLocalPlayer = false;
         public bool isInServer = false;
