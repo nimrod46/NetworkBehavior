@@ -570,7 +570,7 @@ namespace Networking
             identity.isInServer = this.isServer;
             identity.isLocalPlayer = isLocalPlayer;
             identity.isServerAuthority = isServerAuthority;
-            if (valuesByFields.Length != 0)
+            if (valuesByFields != null && valuesByFields.Length != 0)
             {
                 Dictionary<string, string> valuesByFieldsDict = valuesByFields.Select(v => v.Split('+')).ToDictionary(k => k[0], v => v[1]);
                 SetObjectFieldsByValues(identity, valuesByFieldsDict);
@@ -647,16 +647,16 @@ namespace Networking
             }
         }
 
-        private static NetworkIdentity getNetworkIdentityFromLastArg(ref string[] arg)
+        private NetworkIdentity getNetworkIdentityFromLastArg(ref string[] arg)
         {
-            NetworkIdentity identity = getNetworkIdentityById(int.Parse(arg[arg.Length - 1] + ""));
+            NetworkIdentity identity = GetNetworkIdentityById(int.Parse(arg[arg.Length - 1] + ""));
             List<string> temp = arg.ToList();
             temp.RemoveAt(temp.Count - 1);
             arg = temp.ToArray();
             return identity;
         }
 
-        internal static NetworkIdentity getNetworkIdentityById(int id)
+        public NetworkIdentity GetNetworkIdentityById(int id)
         {
             NetworkIdentity identity;
             if(!NetworkIdentity.entities.TryGetValue(id, out identity))
