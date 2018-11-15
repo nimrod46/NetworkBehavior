@@ -27,11 +27,18 @@ namespace Networking
 
         public override void OnSetValue(LocationInterceptionArgs args)
         {
-            base.OnSetValue(args);
             if(!(args.Instance as NetworkIdentity).hasInitialized)
             {
                 return;
             }
+
+            if (!(args.Instance as NetworkIdentity).hasAuthority)
+            {
+                throw new Exception("Cannot change sync var in an none authority identity");
+            }
+
+            base.OnSetValue(args);
+
             lock (NetworkIdentity.scope)
             {
                 if (!NetworkIdentity.interrupt)
@@ -39,7 +46,7 @@ namespace Networking
                     NetworkIdentity.interrupt = true;
                     return;
                 }
-            }
+            }            
 
             if ((args == null || !args.Location.LocationType.IsValueType) && args.Location.LocationType.Name != "String")
             {
