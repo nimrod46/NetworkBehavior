@@ -130,14 +130,14 @@ namespace Networking
                 packet.SendToAUser(NetworkInterface.TCP, port);
                 //Console.WriteLine("spawned the client player in the remote client");
 
+                spawnPacket = new SpawnPacket(this, player.GetType(), port, port);//spawn the client player in all other clients
+                spawnPacket.Send(NetworkInterface.TCP, port);
+                //Console.WriteLine("spawned the client player in all other clients");
+
                 NetworkIdentity identity = Activator.CreateInstance(player.GetType()) as NetworkIdentity;//Spawn the client player locally
                 InitIdentityLocally(identity, port, port, false, false, true);
                 clients.Add(port, new EndPoint(identity, ip));
                 // Console.WriteLine("spawned the client player locally");
-
-                spawnPacket = new SpawnPacket(this, player.GetType(), identity.id, identity.ownerId);//spawn the client player in all other clients
-                spawnPacket.Send(NetworkInterface.TCP, port);
-                //Console.WriteLine("spawned the client player in all other clients");
                 OnPlayerSynchronized?.Invoke(identity);
             }
         }
@@ -412,6 +412,7 @@ namespace Networking
                     isLocalPlayerSpawned = true;
                     DircetInterfaceInitiatingPacket packet = new DircetInterfaceInitiatingPacket(this, player.id);
                     packet.Send(NetworkInterface.UDP);
+                    Console.WriteLine("Spawned local player: " + player.id);
                     break;
                 case (int)PacketID.BeginSynchronization:
                     Synchronize(ip, port);
@@ -577,7 +578,6 @@ namespace Networking
                 identity.hasFieldsBeenInitialized = true;
             }
             identity.ThreadPreformEvents();
-            Console.WriteLine("New entity at: " + id + " " + ownerID);
         }
 
         public NetworkIdentity spawnWithClientAuthority(Type instance, int clientId, NetworkIdentity identity)
