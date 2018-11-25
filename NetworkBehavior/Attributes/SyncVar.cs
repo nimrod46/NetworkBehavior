@@ -82,11 +82,13 @@ namespace Networking
             }
 
             object newArg = Operations.getValueAsObject(field.LocationType.Name, args[0]);
-
-            lock (NetworkIdentity.scope)
+            if (!net.hasAuthority)
             {
-                NetworkIdentity.interrupt = false;
-                field.SetValue(net, newArg);
+                lock (NetworkIdentity.scope)
+                {
+                    NetworkIdentity.interrupt = false;
+                    field.SetValue(net, newArg);
+                }
             }
 
             if (Boolean.TryParse(args[1].ToString(), out bool invoke))

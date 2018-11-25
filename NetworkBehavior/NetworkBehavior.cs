@@ -10,6 +10,7 @@ using PostSharp.Aspects;
 using PostSharp.Serialization;
 using Networking;
 using System.Reflection;
+using System.IO;
 
 namespace Networking
 {
@@ -83,7 +84,6 @@ namespace Networking
             this.ip = ip;
             this.port = port;
             isLocalPlayerSpawned = false;
-            player.OnBeginSynchronization += Player_OnBeginSynchronization;             
         }
 
         private void Player_OnBeginSynchronization()
@@ -210,7 +210,7 @@ namespace Networking
         {
             try
             {
-                client = new Client(ip, port, '§', '|');
+                client = new Client(ip, port, '~', '|');
             }
             catch (Exception e)
             {
@@ -226,13 +226,14 @@ namespace Networking
         {
             try
             {
-                client = new Client(ip, port, '§', '|');
+                client = new Client(ip, port, '~', '|');
                 client.connect();
                 client.OnReceivedEvent += Client_receivedEvent;
                 client.OnConnectionLostEvent += Client_serverDisconnectedEvent;
                 directClient = new DirectClient(ip, port + 1, '|');
                 directClient.start();
                 directClient.OnReceivedEvent += receivedEvent;
+                player.OnBeginSynchronization += Player_OnBeginSynchronization;
             }
             catch (Exception e)
             {
@@ -248,7 +249,7 @@ namespace Networking
         {
             try
             {
-                server = new Server(port, '§', '|');
+                server = new Server(port, '~', '|');
                 server.startServer();
                 server.OnReceivedEvent += Server_receivedEvent;
                 directServer = new DirectServer(port + 1, '|');
