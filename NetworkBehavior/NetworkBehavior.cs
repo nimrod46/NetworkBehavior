@@ -55,6 +55,7 @@ namespace Networking
         internal static Dictionary<string, Type> classes = new Dictionary<string, Type>();
         internal static NetworkBehavior instance;
         internal static Dictionary<int, EndPoint> clients = new Dictionary<int, EndPoint>();
+        internal static List<int> clientsBeforeSync = new List<int>();
 
         public NetworkIdentity player { get; private set; }
         public bool isLocalPlayerSpawned { get; set; }
@@ -89,7 +90,7 @@ namespace Networking
         private void Player_OnBeginSynchronization()
         {
             BeginSynchronizationPacket packet = new BeginSynchronizationPacket(this);
-            packet.Send(NetworkInterface.TCP);
+            packet.Send(NetworkInterface.TCP, clientsBeforeSync.ToArray());
         }
 
         public NetworkBehavior(NetworkIdentity player, int port)
@@ -108,7 +109,7 @@ namespace Networking
 
         private void Server_connectionAcceptedEvent(string ip, int port, long ping)
         {
-            
+            clientsBeforeSync.Add(port);
         }
 
         private void Synchronize(string ip, int port)
@@ -131,7 +132,7 @@ namespace Networking
                 //Console.WriteLine("spawned the client player in the remote client");
 
                 spawnPacket = new SpawnPacket(this, player.GetType(), port, port);//spawn the client player in all other clients
-                spawnPacket.Send(NetworkInterface.TCP, port);
+                spawnPacket.Send(NetworkInterface.TCP, clientsBeforeSync.ToArray());
                 //Console.WriteLine("spawned the client player in all other clients");
 
                 NetworkIdentity identity = Activator.CreateInstance(player.GetType()) as NetworkIdentity;//Spawn the client player locally
@@ -139,6 +140,7 @@ namespace Networking
                 clients.Add(port, new EndPoint(identity, ip));
                 // Console.WriteLine("spawned the client player locally");
                 OnPlayerSynchronized?.Invoke(identity);
+                clientsBeforeSync.Remove(port);
             }
         }
 
@@ -161,7 +163,7 @@ namespace Networking
                     }
                     else
                     {
-                        packet.Send(networkInterface);
+                        packet.Send(networkInterface, clientsBeforeSync.ToArray());
                     }
                     break;
                 default:
@@ -186,7 +188,7 @@ namespace Networking
                     }
                     else
                     {
-                        packet.Send(networkInterface);
+                        packet.Send(networkInterface, clientsBeforeSync.ToArray());
                     }
                     break;
                 case PacketID.Command:
@@ -197,7 +199,7 @@ namespace Networking
                     }
                     else
                     {
-                        packet.Send(networkInterface);
+                        packet.Send(networkInterface, clientsBeforeSync.ToArray());
                     }
                     break;
                 default:
@@ -559,7 +561,7 @@ namespace Networking
                 identity = Activator.CreateInstance(instance) as NetworkIdentity;
             }
             SpawnPacket packet = new SpawnPacket(this, instance, id, port, args);
-            packet.Send(NetworkInterface.TCP);
+            packet.Send(NetworkInterface.TCP, clientsBeforeSync.ToArray());
             InitIdentityLocally(identity, port, id, true, true, true, args);
             return identity;
         }
@@ -576,6 +578,11 @@ namespace Networking
             {
                 Dictionary<string, string> valuesByFieldsDict = valuesByFields.Select(v => v.Split('+')).ToDictionary(k => k[0], v => v[1]);
                 SetObjectFieldsByValues(identity, valuesByFieldsDict);
+                foreach (var hookMethod in SyncVar.hooks.Values)
+                {
+                        MethodInfo method = identity.GetType().GetMethod(hookMethod);
+                        method?.Invoke(identity, null);
+                } 
                 identity.hasFieldsBeenInitialized = true;
             }
             identity.ThreadPreformEvents();
@@ -607,7 +614,7 @@ namespace Networking
             }
             InitIdentityLocally(identity, clientId, id, false, false, true, args);
             SpawnPacket packet = new SpawnPacket(this, instance, id, clientId, args);
-            packet.Send(NetworkInterface.TCP);
+            packet.Send(NetworkInterface.TCP, clientsBeforeSync.ToArray());
             return identity;
         }
 
