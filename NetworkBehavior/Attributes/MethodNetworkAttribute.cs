@@ -20,6 +20,7 @@ namespace Networking
     public abstract class MethodNetworkAttribute : MethodInterceptionAspect
     {
         public NetworkInterface networkInterface = NetworkInterface.TCP;
+        public bool networkInvokeOnNoneAuthority = true;
         public bool invokeInServer = true;
         internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
         internal static event networkingInvokeEvent onNetworkingInvoke;
@@ -36,6 +37,12 @@ namespace Networking
             {
                 base.OnInvoke(args);
                // Console.WriteLine("Net method execute through base: " +args.Method.Name);
+                return;
+            }
+
+            if (!networkInvokeOnNoneAuthority && !((args.Instance as NetworkIdentity).hasAuthority && !(args.Instance as NetworkIdentity).isInServer))
+            {
+                base.OnInvoke(args);
                 return;
             }
 
