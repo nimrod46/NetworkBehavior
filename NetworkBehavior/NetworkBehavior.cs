@@ -139,8 +139,8 @@ namespace Networking
                 InitIdentityLocally(identity, port, port, false, false, true);
                 clients.Add(port, new EndPoint(identity, ip));
                 // Console.WriteLine("spawned the client player locally");
-                OnPlayerSynchronized?.Invoke(identity);
                 clientsBeforeSync.Remove(port);
+                OnPlayerSynchronized?.Invoke(identity);
             }
         }
 
@@ -163,7 +163,7 @@ namespace Networking
                     }
                     else
                     {
-                        packet.Send(networkInterface, clientsBeforeSync.ToArray());
+                        packet.Send(networkInterface);
                     }
                     break;
                 default:
@@ -188,7 +188,7 @@ namespace Networking
                     }
                     else
                     {
-                        packet.Send(networkInterface, clientsBeforeSync.ToArray());
+                        packet.Send(networkInterface);
                     }
                     break;
                 case PacketID.Command:
@@ -199,7 +199,7 @@ namespace Networking
                     }
                     else
                     {
-                        packet.Send(networkInterface, clientsBeforeSync.ToArray());
+                        packet.Send(networkInterface);
                     }
                     break;
                 default:
@@ -347,19 +347,18 @@ namespace Networking
                     }
                     break;
                 case (int)PacketID.BroadcastMethod:
+
                     if (isServer)
                     {
                         if (networkInterface == NetworkInterface.TCP)
                         {
-                            server.broadcast(orgArgs);
+                            server.broadcast(orgArgs, clientsBeforeSync.ToArray());
                         }
                         else
                         {
-                            for (int i = 0; i < clients.Count; i++)
-                            {
-                                directServer.send(orgArgs, clients.Values.ElementAt(i).ip, clients.Values.ElementAt(i).port);
-                            }
+                            directBroadcast(orgArgs, clientsBeforeSync.ToArray());
                         }
+
                         if (!bool.Parse(args[args.Length - 2]))
                         {
                             return;
@@ -387,11 +386,11 @@ namespace Networking
                     {
                         if (networkInterface == NetworkInterface.TCP)
                         {
-                            server.broadcast(orgArgs);
+                            server.broadcast(orgArgs, clientsBeforeSync.ToArray());
                         }
                         else
                         {
-                            directBroadcast(orgArgs);
+                            directBroadcast(orgArgs, clientsBeforeSync.ToArray());
                         }
                     }
                     break;
@@ -568,6 +567,7 @@ namespace Networking
 
         private void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, bool hasAuthority, bool isLocalPlayer, bool isServerAuthority, params string[] valuesByFields)
         {
+            identity.NetworkBehavior = this;
             identity.ownerId = ownerID;
             identity.hasAuthority = hasAuthority;
             identity.id = id;

@@ -1,28 +1,33 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Symbols LinesOfCode="946" PostSharpLinesOfCode="0" EnhancedTypesCount="5" SchemaVersion="1" PostSharpVersion="4.3.33.0" xmlns="http://schemas.postsharp.org/2.0/symbols">
+<Symbols LinesOfCode="973" PostSharpLinesOfCode="0" EnhancedTypesCount="5" SchemaVersion="1" PostSharpVersion="4.3.33.0" xmlns="http://schemas.postsharp.org/2.0/symbols">
   <Class Class="#1=T:[PostSharp]PostSharp.Serialization.PSerializableAttribute">
-    <Instance Declaration="#2=T:[NetworkBehavior]Networking.MethodNetworkAttribute" Id="bd65d63e40286b0f">
+    <Instance Declaration="#2=T:[NetworkBehavior]Networking.MethodNetworkAttribute" Id="bd65d63e503568f0">
       <Target />
     </Instance>
-    <Instance Declaration="#3=T:[NetworkBehavior]Networking.Command" Id="bd65d63ea9304575">
+    <Instance Declaration="#3=T:[NetworkBehavior]Networking.Command" Id="bd65d63edc2a2814">
       <Target />
     </Instance>
-    <Instance Declaration="#4=T:[NetworkBehavior]Networking.BroadcastMethod" Id="bd65d63e6218295a">
+    <Instance Declaration="#4=T:[NetworkBehavior]Networking.BroadcastMethod" Id="bd65d63e5ff3015f">
       <Target />
     </Instance>
-    <Instance Declaration="#5=T:[NetworkBehavior]Networking.SyncVar" Id="bd65d63ed49d4d49">
+    <Instance Declaration="#5=T:[NetworkBehavior]Networking.SyncVar" Id="bd65d63e1bd55b5a">
       <Target />
     </Instance>
   </Class>
   <Class Class="#4">
-    <Instance Declaration="#6=M:[NetworkBehavior]Networking.NetworkIdentity::Disconnected()" Id="bd65d63eb46243f4">
+    <Instance Declaration="#6=M:[NetworkBehavior]Networking.NetworkIdentity::Disconnected()" Id="bd65d63ec74b96c6">
       <Target>
         <JoinPoint Description="#7=Intercepted by OnInvoke" Ordinal="0" />
       </Target>
     </Instance>
-    <Instance Declaration="#8=M:[NetworkBehavior]Networking.NetworkIdentity::Destroy()" Id="bd65d63ebea92756">
+    <Instance Declaration="#8=M:[NetworkBehavior]Networking.NetworkIdentity::Destroy()" Id="bd65d63ec553cbbe">
       <Target>
         <JoinPoint Description="#7" />
+      </Target>
+    </Instance>
+    <Instance Declaration="#9=M:[NetworkBehavior]Networking.NetworkIdentity::SetAuthority(System.Int32)" Id="bd65d63e1c3042fa">
+      <Target>
+        <JoinPoint Description="#7" Ordinal="2" />
       </Target>
     </Instance>
   </Class>

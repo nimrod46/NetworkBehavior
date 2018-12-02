@@ -26,6 +26,7 @@ namespace Networking
         public delegate void BeginSynchronization();
         public event BeginSynchronization OnBeginSynchronization;
 
+        public NetworkBehavior NetworkBehavior;
         public bool isServerAuthority = false;
         public bool hasAuthority = false;
         public bool isLocalPlayer = false;
@@ -121,6 +122,30 @@ namespace Networking
         {
             OnDestroyed();
             entities.Remove(id);
+        }
+
+        [BroadcastMethod]
+        public void SetAuthority(int newOwnerId)
+        {
+            if(newOwnerId == -1)
+            {
+                hasAuthority = isInServer;
+                ownerId = NetworkBehavior.port;
+                isServerAuthority = true;
+            }
+            else
+            {
+                if (NetworkBehavior.GetNetworkIdentityById(newOwnerId).ownerId == newOwnerId)
+                {
+                    ownerId = newOwnerId;
+                    hasAuthority = ownerId == id;
+                    isServerAuthority = NetworkBehavior.port == newOwnerId;
+                }
+                else
+                {
+                    throw new Exception("Invalid owner id was given");
+                }
+            }
         }
     }
 }

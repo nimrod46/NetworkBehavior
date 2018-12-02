@@ -32,6 +32,13 @@ namespace Networking
 
         public override sealed void OnInvoke(MethodInterceptionArgs args)
         {
+           if (!args.Instance.GetType().Equals(args.Method.DeclaringType) && (args.Method.Attributes & MethodAttributes.NewSlot) != 0)
+            {
+                base.OnInvoke(args);
+               // Console.WriteLine("Net method execute through base: " +args.Method.Name);
+                return;
+            }
+
             lock (NetworkIdentity.scope)
             {
                 if (!NetworkIdentity.interrupt)

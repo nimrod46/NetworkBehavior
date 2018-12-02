@@ -97,7 +97,11 @@ namespace Networking
                 {
                     if (hooks.TryGetValue(fieldName, out string hookMethod))
                     {
-                        MethodInfo method = net.GetType().GetMethod(hookMethod);
+                        MethodInfo method = net.GetType().GetMethod(hookMethod, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                        if(method == null)
+                        {
+                            throw new Exception("No hooked method: " + hookMethod + " was found, please check the method name!");
+                        }
                         method.Invoke(net, null);
                     }
                 }
