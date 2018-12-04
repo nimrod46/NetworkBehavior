@@ -580,8 +580,8 @@ namespace Networking
                 SetObjectFieldsByValues(identity, valuesByFieldsDict);
                 foreach (var hookMethod in SyncVar.hooks.Values)
                 {
-                        MethodInfo method = identity.GetType().GetMethod(hookMethod);
-                        method?.Invoke(identity, null);
+                    MethodInfo method = identity.GetType().GetMethod(hookMethod, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                    method?.Invoke(identity, null);
                 } 
                 identity.hasFieldsBeenInitialized = true;
             }

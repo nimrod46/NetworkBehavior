@@ -45,7 +45,8 @@ namespace Networking
 
              if (!(args.Instance as NetworkIdentity).hasAuthority)
             {
-                throw new Exception("Cannot change sync var in an none authority identity");
+                return;
+              //  throw new Exception("Cannot change sync var in an none authority identity");
             }
 
             if ((args == null || !args.Location.LocationType.IsValueType) && args.Location.LocationType.Name != "String")
