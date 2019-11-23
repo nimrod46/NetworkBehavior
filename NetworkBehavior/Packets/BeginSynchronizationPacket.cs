@@ -8,7 +8,7 @@ namespace Networking
 {
     internal class BeginSynchronizationPacket : Packet
     {
-        public BeginSynchronizationPacket(NetworkBehavior net) : base(net, PacketID.BeginSynchronization)
+        public BeginSynchronizationPacket() : base(PacketID.BeginSynchronization)
         {
             generateData();
         }

@@ -8,14 +8,15 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
+    
     public class NetworkIdentity
     {
+        public static Dictionary<int, NetworkIdentity> entities = new Dictionary<int, NetworkIdentity>();
         internal static readonly char packetSpiltter = '¥';
         internal static readonly char argsSplitter = '|';
         internal static bool interrupt = true;
         internal static object scope = new object();
         internal static int lastId = 0;
-        public static Dictionary<int, NetworkIdentity> entities = new Dictionary<int, NetworkIdentity>();
 
         internal delegate void NetworkInitialize();
         internal event NetworkInitialize OnNetworkInitializeEvent;
@@ -46,15 +47,7 @@ namespace Networking
             }
         }
 
-
-
-        internal void ThreadPreformEvents()
-        {
-            //new Thread(new ThreadStart(PreformEvents)).Start();
-            PreformEvents();
-        }
-
-        private void PreformEvents()
+        internal void PreformEvents()
         {
             lock (entities)
             {
@@ -130,7 +123,7 @@ namespace Networking
             if(newOwnerId == -1)
             {
                 hasAuthority = isInServer;
-                ownerId = NetworkBehavior.port;
+                ownerId = NetworkBehavior.serverPort;
                 isServerAuthority = true;
             }
             else
@@ -139,7 +132,7 @@ namespace Networking
                 {
                     ownerId = newOwnerId;
                     hasAuthority = ownerId == id;
-                    isServerAuthority = NetworkBehavior.port == newOwnerId;
+                    isServerAuthority = NetworkBehavior.serverPort == newOwnerId;
                 }
                 else
                 {

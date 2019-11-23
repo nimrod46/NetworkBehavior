@@ -19,7 +19,7 @@ namespace Networking
         internal delegate void networkingInvokeEvent(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity id);
         internal static event networkingInvokeEvent onNetworkingInvoke;
         internal static Dictionary<string, LocationInfo> fields = new Dictionary<string, LocationInfo>();
-        internal static Dictionary<string, string> hooks = new Dictionary<string, string>();
+        internal static Dictionary<string, MethodInfo> hooks = new Dictionary<string, MethodInfo>();
         public NetworkInterface networkInterface = NetworkInterface.TCP;
         public string hook = "";
         public bool invokeInServer = true;
@@ -66,18 +66,17 @@ namespace Networking
             fields.Add(locationInfo.Name, locationInfo);
             if (hook != "")
             {
-                hooks.Add(locationInfo.Name, hook);
+                hooks.Add(locationInfo.Name, locationInfo.DeclaringType.GetMethod(hook, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public));
             }
         }
 
-        internal static void networkInvoke(NetworkIdentity net, object[] args, bool isInServer)
+        internal static void networkInvoke(NetworkIdentity net, object[] args)
         {
-            LocationInfo field;
             string fieldName = args[0].ToString();
             List<object> temp = args.ToList();
             temp.RemoveAt(0);
             args = temp.ToArray();
-            if (!fields.TryGetValue(fieldName, out field))
+            if (!fields.TryGetValue(fieldName, out LocationInfo field))
             {
                 throw new Exception("SyncVar: no field name " + "\"" + fieldName + "\"" + " found.");
             }
@@ -92,25 +91,24 @@ namespace Networking
                 }
             }
 
-            if (Boolean.TryParse(args[1].ToString(), out bool invoke))
-            {
-                if (!isInServer  || invoke)
-                {
-                    if (hooks.TryGetValue(fieldName, out string hookMethod))
+            //if (Boolean.TryParse(args[1].ToString(), out bool invoke))
+           // {
+              //  if (!isInServer  || invoke)
+               // {
+                    if (hooks.TryGetValue(fieldName, out MethodInfo method))
                     {
-                        MethodInfo method = net.GetType().GetMethod(hookMethod, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                         if(method == null)
                         {
-                            throw new Exception("No hooked method: " + hookMethod + " was found, please check the method name!");
+                            throw new Exception("No hooked method: " + method.Name + " was found, please check the method name!");
                         }
                         method.Invoke(net, null);
                     }
-                }
-            } 
-            else
-            {
-                Console.Error.WriteLine("Could not activated hooked method!");
-            }
+                //}
+          //  } 
+            //else
+           // {
+         //       Console.Error.WriteLine("Could not activated hooked method!");
+           // }
 
         }
     }

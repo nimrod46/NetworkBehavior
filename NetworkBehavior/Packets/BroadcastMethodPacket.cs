@@ -9,7 +9,7 @@ namespace Networking
 {
     internal class BroadcastMethodPacket : MethodPacket
     {
-        public BroadcastMethodPacket(NetworkBehavior net, MethodInterceptionArgs args, bool invokeInServer, int id) : base (net, args, invokeInServer, PacketID.BroadcastMethod, id)
+        public BroadcastMethodPacket(MethodInterceptionArgs args, bool invokeInServer, int id) : base (args, invokeInServer, PacketID.BroadcastMethod, id)
         {
 
         }

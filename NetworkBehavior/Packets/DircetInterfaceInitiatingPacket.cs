@@ -10,7 +10,7 @@ namespace Networking
     internal class DircetInterfaceInitiatingPacket : Packet
     {
         protected object id;
-        public DircetInterfaceInitiatingPacket(NetworkBehavior net, int id) : base(net, PacketID.DircetInterfaceInitiating)
+        public DircetInterfaceInitiatingPacket(int id) : base(PacketID.DircetInterfaceInitiating)
         {
             this.id = id;
             generateData();

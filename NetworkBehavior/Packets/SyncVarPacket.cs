@@ -7,14 +7,13 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class SyncVarPacket : Packet
+    internal class SyncVarPacket : Packet
     {
         protected LocationInterceptionArgs locationArg;
         protected int id;
         protected bool invokeInServer;
-        internal SyncVarPacket(NetworkBehavior net, LocationInterceptionArgs locationArg, bool invokeInServer, int id) : base (net, PacketID.SyncVar)
+        internal SyncVarPacket(LocationInterceptionArgs locationArg, bool invokeInServer, int id) : base (PacketID.SyncVar)
         {
-            this.net = net;
             this.locationArg = locationArg;
             this.id = id;
             this.invokeInServer = invokeInServer;

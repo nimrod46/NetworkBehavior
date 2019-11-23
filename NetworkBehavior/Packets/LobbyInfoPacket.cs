@@ -9,7 +9,7 @@ namespace Networking
     internal class LobbyInfoPacket : Packet
     {
         public string info;
-        public LobbyInfoPacket(NetworkBehavior net, string info) : base(net, PacketID.LobbyInfo)
+        public LobbyInfoPacket(string info) : base(PacketID.LobbyInfo)
         {
             this.info = info;
             generateData();

@@ -31,6 +31,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51" />
+    <Reference Include="NetworkingLib">
+      <HintPath>..\..\NetworkingLib\NetworkingLib\bin\Debug\netstandard2.0\NetworkingLib.dll</HintPath>
+    </Reference>
     <Reference Include="PostSharp, Version=4.3.33.0, Culture=neutral, PublicKeyToken=b13fd38b8f9c99d7, processorArchitecture=MSIL">
       <HintPath>..\packages\PostSharp.4.3.33\lib\net35-client\PostSharp.dll</HintPath>
       <Private>True</Private>
@@ -43,18 +47,13 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Xml" />
-    <Reference Include="TcpApi">
-      <HintPath>..\..\TcpApi\TcpApi\bin\Debug\TcpApi.dll</HintPath>
-    </Reference>
-    <Reference Include="UdpApi">
-      <HintPath>..\..\UdpApi\UdpApi\bin\Debug\UdpApi.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Attributes\MethodNetworkAttribute.cs" />
     <Compile Include="Attributes\Command.cs" />
     <Compile Include="Attributes\BroadcastMethod.cs" />
     <Compile Include="Attributes\SyncVar.cs" />
+    <Compile Include="ClientBehavior.cs" />
     <Compile Include="NetworkIdentity.cs" />
     <Compile Include="Operations.cs" />
     <Compile Include="Packets\BeginSynchronizationPacket.cs" />
@@ -66,10 +65,12 @@
     <Compile Include="Packets\MethodPacket.cs" />
     <Compile Include="Packets\NetworkIdentityDisconnectedPacket.cs" />
     <Compile Include="Packets\Packet.cs" />
+    <Compile Include="Packets\SpawnObjectPacket.cs" />
     <Compile Include="Packets\SpawnLocalPlayerPacket.cs" />
     <Compile Include="Packets\SpawnPacket.cs" />
     <Compile Include="Packets\SyncVarPacket.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ServerBehavior.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

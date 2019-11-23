@@ -10,7 +10,7 @@ namespace Networking
     internal class NetworkIdentityDisconnectedPacket : Packet
     {
         private int playerID;
-        public NetworkIdentityDisconnectedPacket(NetworkBehavior net , int playerID) : base(net, PacketID.NetworkIdentityDisconnected)
+        public NetworkIdentityDisconnectedPacket(int playerID) : base(PacketID.NetworkIdentityDisconnected)
         {
             this.playerID = playerID;
             generateData();

@@ -32,12 +32,8 @@ C:\Users\NIMRO\source\repos\NetworkBehavior\NetworkBehavior\obj\Debug\NetworkBeh
 C:\Users\NIMRO\source\repos\NetworkBehavior\NetworkBehavior\obj\Debug\NetworkBehavior.pdb
 C:\Users\NIMRO\source\repos\NetworkBehavior\NetworkBehavior\obj\Debug\PostSharpHost.config
 C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\bin\Debug\PostSharp.dll
-C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\bin\Debug\TcpApi.dll
-C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\bin\Debug\UdpApi.dll
 C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\bin\Debug\PostSharp.xml
 C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\bin\Debug\System.Web.Mvc.xml
-C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\bin\Debug\TcpApi.pdb
-C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\bin\Debug\UdpApi.pdb
 C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\obj\Debug\NetworkBehavior.csprojAssemblyReference.cache
 C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\obj\Debug\NetworkBehavior.csproj.CoreCompileInputs.cache
 C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\obj\Debug\NetworkBehavior.csproj.CopyComplete
@@ -48,3 +44,5 @@ C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\obj\Debug\Networ
 C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\obj\Debug\NetworkBehavior.dll
 C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\obj\Debug\NetworkBehavior.pdb
 C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\obj\Debug\PostSharpHost.config
+C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\bin\Debug\NetworkingLib.dll
+C:\Users\NIMRO\Documents\GitHub\NetworkBehavior\NetworkBehavior\bin\Debug\NetworkingLib.pdb

@@ -12,9 +12,8 @@ namespace Networking
         protected MethodInterceptionArgs methodArgs;
         protected bool invokeInServer;
         protected int id;
-        public MethodPacket (NetworkBehavior net, MethodInterceptionArgs methodArgs, bool invokeInServer, PacketID packetId, int id) : base(net, packetId)
+        public MethodPacket (MethodInterceptionArgs methodArgs, bool invokeInServer, PacketID packetId, int id) : base(packetId)
         {
-            this.net = net;
             this.methodArgs = methodArgs;
             this.invokeInServer = invokeInServer;
             this.id = id;

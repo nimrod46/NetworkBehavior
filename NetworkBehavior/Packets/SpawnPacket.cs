@@ -6,15 +6,14 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    class SpawnPacket : Packet
+    internal abstract class SpawnPacket : Packet
     {
         protected Type instance;
         protected object id;
         protected object ownerId;
         protected string[] spawnParams;
-        internal SpawnPacket(NetworkBehavior net, Type instance, int id, int ownerId, params string[] spawnParams) : base(net, PacketID.Spawn)
+        internal SpawnPacket(PacketID packetID, Type instance, int id, int ownerId, params string[] spawnParams) : base(packetID)
         {
-            this.net = net;
             this.instance = instance;
             this.id = id;
             this.ownerId = ownerId;
