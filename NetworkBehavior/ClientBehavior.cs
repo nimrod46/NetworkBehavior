@@ -30,7 +30,7 @@ namespace Networking
                 client.OnConnectionLostEvent += Client_serverDisconnectedEvent;
                 if (client.Connect(out long pingMs))
                 {
-                    Console.WriteLine("Connection established with: " + pingMs + "ping ms");
+                    Console.WriteLine("Connection established with: " + pingMs + " ping ms");
                     directClient = new DirectClient(serverIp, serverPort + 1, '|');
                     directClient.OnReceivedEvent += ReceivedEvent;
                     player.OnBeginSynchronization += Player_OnBeginSynchronization;
