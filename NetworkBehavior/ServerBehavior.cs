@@ -34,28 +34,30 @@ namespace Networking
 
         public override void Run()
         {
-            try
-            {
+            //try
+            //{
                 server = new Server(serverPort, '~', '|');
                 server.StartServer();
                 server.OnReceivedEvent += Server_receivedEvent;
                 directServer = new DirectServer(serverPort + 1, '|');
                 directServer.Start();
                 directServer.OnReceivedEvent += ReceivedEvent;
-            }
-            catch (Exception e)
-            {
-                throw e;
-            }
 
-            player.isInServer = true;
+                player.isInServer = true;
 
-            InitIdentityLocally(player, serverPort, serverPort);
+                InitIdentityLocally(player, serverPort, serverPort);
 
-            server.OnConnectionAcceptedEvent += Server_connectionAcceptedEvent;
-            server.OnConnectionLobbyAcceptedEvent += Server_OnConnectionLobbyAcceptedEvent;
-            server.OnClientDisconnectedEvent += Server_OnClientDisconnectedEvent;
-            base.Run();
+                server.OnConnectionAcceptedEvent += Server_connectionAcceptedEvent;
+                server.OnConnectionLobbyAcceptedEvent += Server_OnConnectionLobbyAcceptedEvent;
+                server.OnClientDisconnectedEvent += Server_OnClientDisconnectedEvent;
+                base.Run();
+            //}
+            //catch (Exception e)
+            //{
+            //    throw e;
+            //}
+
+            
         }
 
         protected override void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, params string[] valuesByFields)
