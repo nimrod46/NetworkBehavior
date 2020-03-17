@@ -104,19 +104,28 @@ namespace Networking
             OnServerDisconnected();
         }
 
-        [BroadcastMethod(networkInterface = NetworkInterface.TCP, invokeInServer = true)]
+        [BroadcastMethod]
         internal void Disconnected()
         {
             OnNetworkIdentityDisconnected();
         }
 
-        [BroadcastMethod(networkInterface = NetworkInterface.TCP, invokeInServer = true)]
         public void Destroy()
         {
             if(isLocalPlayer)
             {
                 throw new Exception("Cannot Destroy local player!");
             }
+            if(!isInServer && !hasAuthority)
+            {
+                throw new Exception("Cannot Destroy none authority identities!");
+            }
+            DestroyLocally();
+        }
+
+        [BroadcastMethod]
+        private void DestroyLocally()
+        {
             OnDestroyed();
             entities.Remove(id);
         }
