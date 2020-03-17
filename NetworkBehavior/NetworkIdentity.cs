@@ -24,8 +24,8 @@ namespace Networking
         public event HasLocalAuthorityInitialize OnHasLocalAuthorityInitializeEvent;
         public delegate void LocalPlayerInitialize();
         public event LocalPlayerInitialize OnLocalPlayerInitializeEvent;
-        public delegate void BeginSynchronization();
-        public event BeginSynchronization OnBeginSynchronization;
+        internal delegate void BeginSynchronization();
+        internal event BeginSynchronization OnBeginSynchronization;
 
         public NetworkBehavior NetworkBehavior;
         public bool isServerAuthority = false;
