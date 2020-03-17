@@ -113,6 +113,10 @@ namespace Networking
         [BroadcastMethod(networkInterface = NetworkInterface.TCP, invokeInServer = true)]
         public void Destroy()
         {
+            if(isLocalPlayer)
+            {
+                throw new Exception("Cannot Destroy local player!");
+            }
             OnDestroyed();
             entities.Remove(id);
         }
