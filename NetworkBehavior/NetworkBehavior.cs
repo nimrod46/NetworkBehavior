@@ -59,6 +59,10 @@ namespace Networking
         public bool isConnected { get; protected set; }
         public delegate void LobbyInfoEventHandler(string info);
         public event LobbyInfoEventHandler OnLobbyInfoEvent;
+        public delegate void RemotePlayerInitializeEventHandler(NetworkIdentity client);
+        public event RemotePlayerInitializeEventHandler OnRemotePlayerInitialize;
+        public delegate void RemoteIdentityInitializeEventHandler(NetworkIdentity client);
+        public event RemoteIdentityInitializeEventHandler OnRemoteIdentityInitialize;
 
         public NetworkBehavior(NetworkIdentity player, int serverPort)
         {
@@ -222,6 +226,14 @@ namespace Networking
                 identity.hasFieldsBeenInitialized = true;
             }
             identity.PreformEvents();
+            if (!identity.isLocalPlayer && identity.GetType() == player.GetType()) 
+            { 
+                OnRemotePlayerInitialize?.Invoke(identity);
+            }
+            if(!identity.hasAuthority)
+            {
+                OnRemoteIdentityInitialize?.Invoke(identity);
+            }
         }
 
         const BindingFlags getBindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic;

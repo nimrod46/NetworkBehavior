@@ -18,12 +18,12 @@ namespace Networking
         internal static object scope = new object();
         internal static int lastId = 0;
 
-        internal delegate void NetworkInitialize();
-        internal event NetworkInitialize OnNetworkInitializeEvent;
-        internal delegate void HasLocalAuthorityInitialize();
-        internal event HasLocalAuthorityInitialize OnHasLocalAuthorityInitializeEvent;
-        internal delegate void LocalPlayerInitialize();
-        internal event LocalPlayerInitialize OnLocalPlayerInitializeEvent;
+        public delegate void NetworkInitialize();
+        public event NetworkInitialize OnNetworkInitializeEvent;
+        public delegate void HasLocalAuthorityInitialize();
+        public event HasLocalAuthorityInitialize OnHasLocalAuthorityInitializeEvent;
+        public delegate void LocalPlayerInitialize();
+        public event LocalPlayerInitialize OnLocalPlayerInitializeEvent;
         public delegate void BeginSynchronization();
         public event BeginSynchronization OnBeginSynchronization;
 
@@ -55,7 +55,6 @@ namespace Networking
                 {
                     entities.Add(id, this);
                 }
-                OnNetworkInitializeEvent?.Invoke();
                 if (hasAuthority)
                 {
                     OnHasLocalAuthorityInitializeEvent?.Invoke();
@@ -68,6 +67,7 @@ namespace Networking
 
             }
             hasInitialized = true;
+            OnNetworkInitializeEvent?.Invoke();
         }
 
         public virtual void OnNetworkInitialize()
