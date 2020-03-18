@@ -56,7 +56,7 @@ namespace Networking
         public NetworkIdentity player { get; private set; }
         public readonly int serverPort;
         public bool isLocalPlayerSpawned { get; set; }
-        public bool isConnected { get; protected set; }
+
         public delegate void LobbyInfoEventHandler(string info);
         public event LobbyInfoEventHandler OnLobbyInfoEvent;
         public delegate void RemotePlayerInitializeEventHandler(NetworkIdentity client);
@@ -70,10 +70,6 @@ namespace Networking
             this.player = player;
             this.serverPort = serverPort;
             isLocalPlayerSpawned = false;
-        }
-
-        private void registerEvents()
-        {
             MethodNetworkAttribute.onNetworkingInvoke += MethodNetworkAttribute_onNetworkingInvoke;
             SyncVar.onNetworkingInvoke += SyncVar_onNetworkingInvoke;
         }
@@ -81,13 +77,6 @@ namespace Networking
 
         protected abstract void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
        
-
-        public virtual void Run()
-        {
-            isConnected = true;
-            registerEvents();
-        }
-
         protected virtual void ReceivedEvent(string[] args, string ip, int port)
         {
             try

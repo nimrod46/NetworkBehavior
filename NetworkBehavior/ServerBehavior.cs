@@ -15,6 +15,7 @@ namespace Networking
         public event PlayerSynchronizedEventHandler OnPlayerSynchronized;
         public delegate void ConnectionLobbyAcceptedEventHandler(string ip, int port, long ping);
         public event ConnectionLobbyAcceptedEventHandler OnConnectionLobbyAcceptedEvent;
+        public bool IsRunning { get; set; }
         internal Dictionary<int, EndPoint> clients = new Dictionary<int, EndPoint>();
         internal List<int> clientsBeforeSync = new List<int>();
         public int numberOfPlayer
@@ -32,7 +33,7 @@ namespace Networking
             isLocalPlayerSpawned = false;
         }
 
-        public override void Run()
+        public void Run()
         {
             server = new Server(serverPort, '~', '|');
             server.StartServer();
@@ -45,10 +46,11 @@ namespace Networking
 
             InitIdentityLocally(player, serverPort, serverPort);
 
+            IsRunning = true;
+
             server.OnConnectionAcceptedEvent += Server_connectionAcceptedEvent;
             server.OnConnectionLobbyAcceptedEvent += Server_OnConnectionLobbyAcceptedEvent;
             server.OnClientDisconnectedEvent += Server_OnClientDisconnectedEvent;
-            base.Run();
         }
 
         protected override void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, params string[] valuesByFields)
@@ -217,7 +219,7 @@ namespace Networking
 
         protected override void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
-            if (!isConnected)
+            if (!IsRunning)
             {
                 throw new Exception("No connection exist!");
             }
@@ -236,7 +238,7 @@ namespace Networking
 
         protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
-            if (!isConnected)
+            if (!IsRunning)
             {
                 throw new Exception("No connection exist!");
             }
@@ -258,7 +260,7 @@ namespace Networking
 
         public void sendLobbyInfo(string ip, int port, string data)
         {
-            if (!isConnected)
+            if (!IsRunning)
             {
                 throw new Exception("No connection exist!");
             }

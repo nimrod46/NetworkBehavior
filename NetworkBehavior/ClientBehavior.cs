@@ -11,6 +11,7 @@ namespace Networking
 {
     public class ClientBehavior : NetworkBehavior
     {
+        public bool IsConnected { get; private set; }
         public readonly string serverIp;
         private Client client;
         private DirectClient directClient;
@@ -21,7 +22,7 @@ namespace Networking
             isLocalPlayerSpawned = false;
         }
 
-        public override void Run()
+        public void Connect()
         {
             client = new Client(serverIp, serverPort, '~', '|');
             client.OnReceivedEvent += Client_receivedEvent;
@@ -29,11 +30,12 @@ namespace Networking
             if (client.Connect(out long pingMs))
             {
                 Console.WriteLine("Connection established with: " + pingMs + " ping ms");
+                IsConnected = true;
+
                 directClient = new DirectClient(serverIp, serverPort + 1, '|');
                 directClient.OnReceivedEvent += ReceivedEvent;
                 player.OnBeginSynchronization += Player_OnBeginSynchronization;
                 directClient.Start();
-                base.Run();
             }
         }
 
@@ -78,7 +80,7 @@ namespace Networking
 
         private void Client_serverDisconnectedEvent(string ip, int port)
         {
-            isConnected = false;
+            IsConnected = false;
             player.ServerDisconnected();
         }
 
@@ -101,7 +103,7 @@ namespace Networking
 
         protected override void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
-            if (!isConnected)
+            if (!IsConnected)
             {
                 throw new Exception("No connection exist!");
             }
@@ -119,7 +121,7 @@ namespace Networking
 
         protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
-            if (!isConnected)
+            if (!IsConnected)
             {
                 throw new Exception("No connection exist!");
             }
