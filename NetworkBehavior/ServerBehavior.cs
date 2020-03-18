@@ -37,6 +37,9 @@ namespace Networking
         {
             server = new Server(serverPort, '~', '|');
             server.StartServer();
+            
+            Start();
+
             server.OnReceivedEvent += Server_receivedEvent;
             directServer = new DirectServer(serverPort + 1, '|');
             directServer.Start();
@@ -44,9 +47,9 @@ namespace Networking
 
             player.isInServer = true;
 
-            InitIdentityLocally(player, serverPort, serverPort);
-
             IsRunning = true;
+
+            InitIdentityLocally(player, serverPort, serverPort);
 
             server.OnConnectionAcceptedEvent += Server_connectionAcceptedEvent;
             server.OnConnectionLobbyAcceptedEvent += Server_OnConnectionLobbyAcceptedEvent;

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Networking;
 using NetworkingLib;
@@ -29,6 +30,7 @@ namespace Networking
             client.OnConnectionLostEvent += Client_serverDisconnectedEvent;
             if (client.Connect(out long pingMs))
             {
+                Start();
                 Console.WriteLine("Connection established with: " + pingMs + " ping ms");
                 IsConnected = true;
 
@@ -90,7 +92,10 @@ namespace Networking
             {
                 try
                 {
-                    ParsePacket(s, ip, port, NetworkInterface.TCP);
+                    lock (scope)
+                    {
+                        ParsePacket(s, ip, port, NetworkInterface.TCP);
+                    }
                 }
                 catch (Exception e)
                 {

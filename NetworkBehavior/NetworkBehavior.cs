@@ -52,6 +52,7 @@ namespace Networking
 
     public abstract class NetworkBehavior
     {
+        internal Object scope = new Object();
         internal static Dictionary<string, Type> classes = new Dictionary<string, Type>();
         public NetworkIdentity player { get; private set; }
         public readonly int serverPort;
@@ -70,6 +71,10 @@ namespace Networking
             this.player = player;
             this.serverPort = serverPort;
             isLocalPlayerSpawned = false;
+        }
+
+        public void Start()
+        {
             MethodNetworkAttribute.onNetworkingInvoke += MethodNetworkAttribute_onNetworkingInvoke;
             SyncVar.onNetworkingInvoke += SyncVar_onNetworkingInvoke;
         }
