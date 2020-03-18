@@ -23,26 +23,18 @@ namespace Networking
 
         public override void Run()
         {
-            //try
-            //{
-                client = new Client(serverIp, serverPort, '~', '|');
-                client.OnReceivedEvent += Client_receivedEvent;
-                client.OnConnectionLostEvent += Client_serverDisconnectedEvent;
-                if (client.Connect(out long pingMs))
-                {
-                    Console.WriteLine("Connection established with: " + pingMs + " ping ms");
-                    directClient = new DirectClient(serverIp, serverPort + 1, '|');
-                    directClient.OnReceivedEvent += ReceivedEvent;
-                    player.OnBeginSynchronization += Player_OnBeginSynchronization;
-                    directClient.Start();
-                    base.Run();
-                }
-            //}
-            //catch (Exception e)
-            //{
-            //    throw e;
-            //}
-
+            client = new Client(serverIp, serverPort, '~', '|');
+            client.OnReceivedEvent += Client_receivedEvent;
+            client.OnConnectionLostEvent += Client_serverDisconnectedEvent;
+            if (client.Connect(out long pingMs))
+            {
+                Console.WriteLine("Connection established with: " + pingMs + " ping ms");
+                directClient = new DirectClient(serverIp, serverPort + 1, '|');
+                directClient.OnReceivedEvent += ReceivedEvent;
+                player.OnBeginSynchronization += Player_OnBeginSynchronization;
+                directClient.Start();
+                base.Run();
+            }
         }
 
         protected override void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, params string[] valuesByFields)

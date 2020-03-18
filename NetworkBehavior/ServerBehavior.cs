@@ -34,30 +34,21 @@ namespace Networking
 
         public override void Run()
         {
-            //try
-            //{
-                server = new Server(serverPort, '~', '|');
-                server.StartServer();
-                server.OnReceivedEvent += Server_receivedEvent;
-                directServer = new DirectServer(serverPort + 1, '|');
-                directServer.Start();
-                directServer.OnReceivedEvent += ReceivedEvent;
+            server = new Server(serverPort, '~', '|');
+            server.StartServer();
+            server.OnReceivedEvent += Server_receivedEvent;
+            directServer = new DirectServer(serverPort + 1, '|');
+            directServer.Start();
+            directServer.OnReceivedEvent += ReceivedEvent;
 
-                player.isInServer = true;
+            player.isInServer = true;
 
-                InitIdentityLocally(player, serverPort, serverPort);
+            InitIdentityLocally(player, serverPort, serverPort);
 
-                server.OnConnectionAcceptedEvent += Server_connectionAcceptedEvent;
-                server.OnConnectionLobbyAcceptedEvent += Server_OnConnectionLobbyAcceptedEvent;
-                server.OnClientDisconnectedEvent += Server_OnClientDisconnectedEvent;
-                base.Run();
-            //}
-            //catch (Exception e)
-            //{
-            //    throw e;
-            //}
-
-            
+            server.OnConnectionAcceptedEvent += Server_connectionAcceptedEvent;
+            server.OnConnectionLobbyAcceptedEvent += Server_OnConnectionLobbyAcceptedEvent;
+            server.OnClientDisconnectedEvent += Server_OnClientDisconnectedEvent;
+            base.Run();
         }
 
         protected override void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, params string[] valuesByFields)
@@ -299,30 +290,16 @@ namespace Networking
 
         public NetworkIdentity spawnWithServerAuthority(Type instance, NetworkIdentity identity)
         {
-            if (identity != null && identity.hasInitialized)
-            {
-                throw new Exception("Cannot spawn network instance that is already in use");
-            }
-
-            int id = NetworkIdentity.lastId + 1;
-            NetworkIdentity.lastId++;
-            string[] args = null;
-            if (identity != null)
-            {
-                Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(identity);
-                args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
-            }
-            else
-            {
-                identity = Activator.CreateInstance(instance) as NetworkIdentity;
-            }
-            SpawnObjectPacket packet = new SpawnObjectPacket(instance, id, serverPort, args);
-            Send(packet, NetworkInterface.TCP, clientsBeforeSync.ToArray());
-            InitIdentityLocally(identity, serverPort, id, args);
-            return identity;
+            return SpawnIdentity(instance, identity, -1);
         }
 
         public NetworkIdentity spawnWithClientAuthority(Type instance, int clientId, NetworkIdentity identity)
+        {
+            return SpawnIdentity(instance, identity, clientId);
+
+        }
+
+        private NetworkIdentity SpawnIdentity(Type instance, NetworkIdentity identity, int clientId)
         {
             if (identity != null && identity.hasInitialized)
             {
@@ -341,9 +318,18 @@ namespace Networking
             {
                 identity = Activator.CreateInstance(instance) as NetworkIdentity;
             }
-            InitIdentityLocally(identity, clientId, id, args);
             SpawnObjectPacket packet = new SpawnObjectPacket(instance, id, clientId, args);
             Send(packet, NetworkInterface.TCP, clientsBeforeSync.ToArray());
+            int owner = 0;
+            if(clientId == -1)
+            {
+                owner = serverPort;
+            }
+            else
+            {
+                owner = clientId;
+            }
+            InitIdentityLocally(identity, owner, id, args);
             return identity;
         }
     }
