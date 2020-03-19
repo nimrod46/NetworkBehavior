@@ -55,15 +55,7 @@ namespace Networking
                     return;
                 }
             }
-            /*
-            foreach (object o in args.Arguments)
-            {
-                if ((o == null || !o.GetType().IsValueType) && o?.GetType().Name != "String")
-                {
-                    throw new Exception("Arguments cannot be none value type");
-                }
-            }
-            */
+
             onNetworkingInvoke?.Invoke(args, packetID, networkInterface, invokeInServer, args.Instance as NetworkIdentity);
         }
 

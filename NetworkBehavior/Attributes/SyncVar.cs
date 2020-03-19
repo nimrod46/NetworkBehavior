@@ -43,10 +43,10 @@ namespace Networking
                 }
             }
 
-             if (!(args.Instance as NetworkIdentity).hasAuthority)
+            if (!(args.Instance as NetworkIdentity).hasAuthority)
             {
                 return;
-              //  throw new Exception("Cannot change sync var in an none authority identity");
+                throw new Exception("Cannot change sync var in an none authority identity");
             }
 
             if ((args == null || !args.Location.LocationType.IsValueType) && args.Location.LocationType.Name != "String")
@@ -91,25 +91,14 @@ namespace Networking
                 }
             }
 
-            //if (Boolean.TryParse(args[1].ToString(), out bool invoke))
-           // {
-              //  if (!isInServer  || invoke)
-               // {
-                    if (hooks.TryGetValue(fieldName, out MethodInfo method))
-                    {
-                        if(method == null)
-                        {
-                            throw new Exception("No hooked method: " + method.Name + " was found, please check the method name!");
-                        }
-                        method.Invoke(net, null);
-                    }
-                //}
-          //  } 
-            //else
-           // {
-         //       Console.Error.WriteLine("Could not activated hooked method!");
-           // }
-
+            if (hooks.TryGetValue(fieldName, out MethodInfo method))
+            {
+                if (method == null)
+                {
+                    throw new Exception("No hooked method: " + method.Name + " was found, please check the method name!");
+                }
+                method.Invoke(net, null);
+            }
         }
     }
 }

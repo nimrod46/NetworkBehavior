@@ -24,7 +24,6 @@ namespace Networking
         Spawn,
         SpawnWithLocalAuthority,
         BeginSynchronization,
-        NetworkIdentityDisconnected
     }
 
     public enum NetworkInterface
@@ -144,9 +143,6 @@ namespace Networking
                     identity = o as NetworkIdentity;
                     InitIdentityLocally(identity, int.Parse(args[1]), int.Parse(args[args.Length - 1]), valuesOfFields);
                     break;
-                //case (int)PacketID.NetworkIdentityDisconnected:            
-                //  clientDsiconnected(int.Parse(srts[0]));
-                // break;
                 default:
                     Console.Error.WriteLine("Invalid packet has been received!");
                     print(args);

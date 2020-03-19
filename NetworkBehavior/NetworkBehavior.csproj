@@ -65,7 +65,6 @@
     <Compile Include="Packets\DircetInterfaceInitiatingPacket.cs" />
     <Compile Include="Packets\LobbyInfoPacket.cs" />
     <Compile Include="Packets\MethodPacket.cs" />
-    <Compile Include="Packets\NetworkIdentityDisconnectedPacket.cs" />
     <Compile Include="Packets\Packet.cs" />
     <Compile Include="Packets\SpawnObjectPacket.cs" />
     <Compile Include="Packets\SpawnPacket.cs" />
