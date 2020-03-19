@@ -11,10 +11,12 @@ namespace Networking
 {
     public class ServerBehavior : Networking.NetworkBehavior
     {
-        public delegate void PlayerSynchronizedEventHandler(NetworkIdentity client);
-        public event PlayerSynchronizedEventHandler OnPlayerSynchronized;
+        private readonly object syncObj = new object();
         public delegate void ConnectionLobbyAcceptedEventHandler(string ip, int port, long ping);
         public event ConnectionLobbyAcceptedEventHandler OnConnectionLobbyAcceptedEvent;
+        public delegate void ClientEventHandlerSynchronizedEventHandler(int id);
+        public event ClientEventHandlerSynchronizedEventHandler OnClientEventHandlerSynchronizedEvent;
+
         public bool IsRunning { get; set; }
         internal Dictionary<int, EndPoint> clients = new Dictionary<int, EndPoint>();
         internal List<int> clientsBeforeSync = new List<int>();
@@ -28,28 +30,24 @@ namespace Networking
         private Server server;
         private DirectServer directServer;
 
-        public ServerBehavior(NetworkIdentity player, int serverPort) : base(player, serverPort)
+        public ServerBehavior(int serverPort) : base(serverPort)
         {
-            isLocalPlayerSpawned = false;
+            id = serverPort;
         }
 
         public void Run()
         {
             server = new Server(serverPort, '~', '|');
             server.StartServer();
-            
+            server.OnReceivedEvent += Server_receivedEvent;
+
             Start();
 
-            server.OnReceivedEvent += Server_receivedEvent;
             directServer = new DirectServer(serverPort + 1, '|');
             directServer.Start();
             directServer.OnReceivedEvent += ReceivedEvent;
 
-            player.isInServer = true;
-
             IsRunning = true;
-
-            InitIdentityLocally(player, serverPort, serverPort);
 
             server.OnConnectionAcceptedEvent += Server_connectionAcceptedEvent;
             server.OnConnectionLobbyAcceptedEvent += Server_OnConnectionLobbyAcceptedEvent;
@@ -64,7 +62,7 @@ namespace Networking
 
         private void Synchronize(string ip, int port)
         {
-            lock (player)
+            lock (syncObj)
             {
                 Console.WriteLine("New player at: " + GetIdByIpAndPort(ip, port));
                 SpawnObjectPacket spawnPacket;
@@ -75,22 +73,16 @@ namespace Networking
                     spawnPacket = new SpawnObjectPacket(getNetworkClassTypeByName(i.GetType().FullName), i.id, i.ownerId, args); //Spawn all existing clients in the remote client
                     SendToAUser(spawnPacket, NetworkInterface.TCP, ip, port);
                 }
-                //Console.WriteLine("Spawn all existing clients");
                 int clientId = GetIdByIpAndPort(ip, port);
-                NetworkIdentity identity = Activator.CreateInstance(player.GetType()) as NetworkIdentity;//Spawn the client player locally
-                InitIdentityLocally(identity, clientId, clientId);
-                // Console.WriteLine("spawned the client player locally");
-                clients.Add(clientId, new EndPoint(identity, ip, port));
-                SpawnLocalPlayerPacket spawnLocalPlayerPacket = new SpawnLocalPlayerPacket(player.GetType(), clientId);//spawn the client player in the remote client
-                SendToAUser(spawnLocalPlayerPacket, NetworkInterface.TCP, ip, port);
-                //Console.WriteLine("spawned the client player in the remote client");
-                spawnPacket = new SpawnObjectPacket(player.GetType(), clientId, clientId);//spawn the client player in all other clients
-                Send(spawnPacket, NetworkInterface.TCP, clientsBeforeSync.ToArray());
-                //Console.WriteLine("spawned the client player in all other clients");
+                clients.Add(clientId, new EndPoint(ip, port));
+                //Console.WriteLine("Spawn all existing clients");
 
-                
-                clientsBeforeSync.Remove(GetIdByIpAndPort(ip, port));
-                OnPlayerSynchronized?.Invoke(identity);
+                InitiateDircetInterface initiateDircetInterface = new InitiateDircetInterface();//Initiate dircet interface with the client
+                SendToAUser(initiateDircetInterface, NetworkInterface.TCP, ip, port);
+                //Console.WriteLine("Initiated dircet interface with the client");
+
+                clientsBeforeSync.Remove(clientId);
+                OnClientEventHandlerSynchronizedEvent?.Invoke(clientId);
             }
         }
 
@@ -274,10 +266,9 @@ namespace Networking
 
         private void clientDsiconnected(int id)
         {
-            Console.WriteLine("Player: " + id + " DISCONNECTED");
+            Console.WriteLine("Client: " + id + " DISCONNECTED");
             lock (NetworkIdentity.entities)
             {
-                NetworkIdentity.entities[id].Disconnected();
                 List<NetworkIdentity> entitiesToDestroy = new List<NetworkIdentity>();
                 for (int i = 0; i < NetworkIdentity.entities.Count; i++)
                 {
@@ -293,18 +284,18 @@ namespace Networking
             }
         }
 
-        public NetworkIdentity spawnWithServerAuthority(Type instance, NetworkIdentity identity)
+        public NetworkIdentity spawnWithServerAuthority(Type instance, NetworkIdentity identity = null)
         {
-            return SpawnIdentity(instance, identity, -1);
+            return SpawnIdentity(instance, -1, identity);
         }
 
-        public NetworkIdentity spawnWithClientAuthority(Type instance, int clientId, NetworkIdentity identity)
+        public NetworkIdentity spawnWithClientAuthority(Type instance, int clientId, NetworkIdentity identity = null)
         {
-            return SpawnIdentity(instance, identity, clientId);
+            return SpawnIdentity(instance, clientId, identity);
 
         }
 
-        private NetworkIdentity SpawnIdentity(Type instance, NetworkIdentity identity, int clientId)
+        private NetworkIdentity SpawnIdentity(Type instance, int clientId, NetworkIdentity identity)
         {
             if (identity != null && identity.hasInitialized)
             {

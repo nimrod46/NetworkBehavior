@@ -16,12 +16,12 @@ namespace Networking
     public enum PacketID
     {
         LobbyInfo,
+        InitiateDircetInterface,
         DircetInterfaceInitiating,
         BroadcastMethod,
         Command,
         SyncVar,
         Spawn,
-        SpawnLocalPlayer,
         SpawnWithLocalAuthority,
         BeginSynchronization,
         NetworkIdentityDisconnected
@@ -35,14 +35,12 @@ namespace Networking
 
     public struct EndPoint
     {
-        public NetworkIdentity Identity { get; set; }
         public string Ip { get; set; }
         public int TcpPort { get; set; }
         public int UdpPort { get; set; }
 
-        public EndPoint(NetworkIdentity identity, string ip, int tcpPort)
+        public EndPoint(string ip, int tcpPort)
         {
-            Identity = identity;
             Ip = ip;
             TcpPort = tcpPort;
             UdpPort = 0;
@@ -52,25 +50,21 @@ namespace Networking
 
     public abstract class NetworkBehavior
     {
-        internal Object scope = new Object();
-        internal static Dictionary<string, Type> classes = new Dictionary<string, Type>();
-        public NetworkIdentity player { get; private set; }
-        public readonly int serverPort;
-        public bool isLocalPlayerSpawned { get; set; }
-
         public delegate void LobbyInfoEventHandler(string info);
         public event LobbyInfoEventHandler OnLobbyInfoEvent;
-        public delegate void RemotePlayerInitializeEventHandler(NetworkIdentity client);
-        public event RemotePlayerInitializeEventHandler OnRemotePlayerInitialize;
-        public delegate void RemoteIdentityInitializeEventHandler(NetworkIdentity client);
-        public event RemoteIdentityInitializeEventHandler OnRemoteIdentityInitialize;
+        public delegate void IdentityInitializeEventHandler(NetworkIdentity client);
+        public event IdentityInitializeEventHandler OnRemoteIdentityInitialize;
+        public event IdentityInitializeEventHandler OnLocalIdentityInitialize;
 
-        public NetworkBehavior(NetworkIdentity player, int serverPort)
+        public readonly int serverPort;
+        public int id;
+        internal static Dictionary<string, Type> classes = new Dictionary<string, Type>();
+
+        
+
+        public NetworkBehavior(int serverPort)
         {
-            //instance = this;
-            this.player = player;
             this.serverPort = serverPort;
-            isLocalPlayerSpawned = false;
         }
 
         public void Start()
@@ -129,7 +123,7 @@ namespace Networking
                     {
                         return;
                     }
-                    MethodNetworkAttribute.networkInvoke(player, args);
+                    MethodNetworkAttribute.networkInvoke(identity, args);
                     break;
                 case (int)PacketID.SyncVar:
                     identity = getNetworkIdentityFromLastArg(ref args);
@@ -149,17 +143,6 @@ namespace Networking
                     }
                     identity = o as NetworkIdentity;
                     InitIdentityLocally(identity, int.Parse(args[1]), int.Parse(args[args.Length - 1]), valuesOfFields);
-                    break;
-                case (int)PacketID.SpawnLocalPlayer:
-                    valuesOfFields = new string[args.Length - 1 - 2];
-                    for (int i = 2; i < args.Length - 1; i++)
-                    {
-                        valuesOfFields[i - 2] = args[i];
-                    }
-
-                    InitIdentityLocally(player, int.Parse(args[1]), int.Parse(args[1]), valuesOfFields);
-                    isLocalPlayerSpawned = true;
-                    Console.WriteLine("Spawned local player: " + player.id);
                     break;
                 //case (int)PacketID.NetworkIdentityDisconnected:            
                 //  clientDsiconnected(int.Parse(srts[0]));
@@ -210,9 +193,8 @@ namespace Networking
             identity.NetworkBehavior = this;
             identity.ownerId = ownerID;
             identity.id = id;
-            identity.hasAuthority = ownerID == player.id;
+            identity.hasAuthority = ownerID == this.id;
             identity.isServerAuthority = ownerID == serverPort;
-            identity.isLocalPlayer = id == player.id;
             if (valuesByFields != null && valuesByFields.Length != 0)
             {
                 Dictionary<string, string> valuesByFieldsDict = valuesByFields.Select(v => v.Split('+')).ToDictionary(k => k[0], v => v[1]);
@@ -220,11 +202,11 @@ namespace Networking
                 identity.hasFieldsBeenInitialized = true;
             }
             identity.PreformEvents();
-            if (!identity.isLocalPlayer && identity.GetType() == player.GetType()) 
-            { 
-                OnRemotePlayerInitialize?.Invoke(identity);
+            if (identity.hasAuthority)
+            {
+                OnLocalIdentityInitialize?.Invoke(identity);
             }
-            if(!identity.hasAuthority)
+            else
             {
                 OnRemoteIdentityInitialize?.Invoke(identity);
             }

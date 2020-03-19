@@ -61,13 +61,13 @@
     <Compile Include="Packets\CommandPacket.cs" />
     <Compile Include="Packets\BroadcastMethodPacket.cs" />
     <Compile Include="NetworkBehavior.cs" />
+    <Compile Include="Packets\InitiateDircetInterface.cs" />
     <Compile Include="Packets\DircetInterfaceInitiatingPacket.cs" />
     <Compile Include="Packets\LobbyInfoPacket.cs" />
     <Compile Include="Packets\MethodPacket.cs" />
     <Compile Include="Packets\NetworkIdentityDisconnectedPacket.cs" />
     <Compile Include="Packets\Packet.cs" />
     <Compile Include="Packets\SpawnObjectPacket.cs" />
-    <Compile Include="Packets\SpawnLocalPlayerPacket.cs" />
     <Compile Include="Packets\SpawnPacket.cs" />
     <Compile Include="Packets\SyncVarPacket.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

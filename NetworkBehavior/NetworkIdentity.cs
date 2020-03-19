@@ -22,15 +22,12 @@ namespace Networking
         public event NetworkInitialize OnNetworkInitializeEvent;
         public delegate void HasLocalAuthorityInitialize();
         public event HasLocalAuthorityInitialize OnHasLocalAuthorityInitializeEvent;
-        public delegate void LocalPlayerInitialize();
-        public event LocalPlayerInitialize OnLocalPlayerInitializeEvent;
         internal delegate void BeginSynchronization();
         internal event BeginSynchronization OnBeginSynchronization;
 
         public NetworkBehavior NetworkBehavior;
         public bool isServerAuthority = false;
         public bool hasAuthority = false;
-        public bool isLocalPlayer = false;
         public bool isInServer = false;
         public bool hasInitialized = false;
         public bool hasFieldsBeenInitialized = false;
@@ -40,7 +37,6 @@ namespace Networking
         {
             OnNetworkInitializeEvent += OnNetworkInitialize;
             OnHasLocalAuthorityInitializeEvent += OnHasLocalAuthorityInitialize;
-            OnLocalPlayerInitializeEvent += OnLocalPlayerInitialize;
             if (!NetworkBehavior.classes.ContainsKey(GetType().FullName))
             {
                 NetworkBehavior.classes.Add(GetType().FullName, GetType());
@@ -60,14 +56,9 @@ namespace Networking
                     OnHasLocalAuthorityInitializeEvent?.Invoke();
                 }
 
-                if (isLocalPlayer)
-                {
-                    OnLocalPlayerInitializeEvent?.Invoke();
-                }
-
+                hasInitialized = true;
+                OnNetworkInitializeEvent?.Invoke();
             }
-            hasInitialized = true;
-            OnNetworkInitializeEvent?.Invoke();
         }
 
         public virtual void OnNetworkInitialize()
@@ -99,23 +90,9 @@ namespace Networking
         {
         }
 
-        internal void ServerDisconnected()
-        {
-            OnServerDisconnected();
-        }
-
-        [BroadcastMethod]
-        internal void Disconnected()
-        {
-            OnNetworkIdentityDisconnected();
-        }
 
         public void Destroy()
         {
-            if(isLocalPlayer)
-            {
-                throw new Exception("Cannot Destroy local player!");
-            }
             if(!isInServer && !hasAuthority)
             {
                 throw new Exception("Cannot Destroy none authority identities!");

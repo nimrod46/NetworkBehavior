@@ -12,15 +12,18 @@ namespace Networking
 {
     public class ClientBehavior : NetworkBehavior
     {
+        public delegate void ServerDisconnectedEventHandler();
+        public event ServerDisconnectedEventHandler OnServerDisconnected;
+
         public bool IsConnected { get; private set; }
         public readonly string serverIp;
         private Client client;
         private DirectClient directClient;
 
-        public ClientBehavior(NetworkIdentity player, int serverPort, string serverIp) : base(player, serverPort)
+
+        public ClientBehavior(int serverPort, string serverIp) : base(serverPort)
         {
             this.serverIp = serverIp;
-            isLocalPlayerSpawned = false;
         }
 
         public void Connect()
@@ -30,13 +33,13 @@ namespace Networking
             client.OnConnectionLostEvent += Client_serverDisconnectedEvent;
             if (client.Connect(out long pingMs))
             {
-                Start();
+                id = GetIdByIpAndPort(serverIp, client.GetPort());
+                Start(); 
                 Console.WriteLine("Connection established with: " + pingMs + " ping ms");
                 IsConnected = true;
 
                 directClient = new DirectClient(serverIp, serverPort + 1, '|');
                 directClient.OnReceivedEvent += ReceivedEvent;
-                player.OnBeginSynchronization += Player_OnBeginSynchronization;
                 directClient.Start();
             }
         }
@@ -63,9 +66,8 @@ namespace Networking
         {
             switch (packetID)
             {
-                case (int)PacketID.SpawnLocalPlayer:
-                    base.ParsePacketByPacketID(packetID, args, ip, port, networkInterface, originArgs);
-                    DircetInterfaceInitiatingPacket packet = new DircetInterfaceInitiatingPacket(player.id);
+                case (int)PacketID.InitiateDircetInterface:
+                    DircetInterfaceInitiatingPacket packet = new DircetInterfaceInitiatingPacket(id);
                     Send(packet, NetworkInterface.UDP);
                     break;
                 default:
@@ -73,8 +75,7 @@ namespace Networking
                     break;
             }
         }
-
-        private void Player_OnBeginSynchronization()
+        public void Synchronize()
         {
             BeginSynchronizationPacket packet = new BeginSynchronizationPacket();
             Send(packet, NetworkInterface.TCP);
@@ -83,7 +84,7 @@ namespace Networking
         private void Client_serverDisconnectedEvent(string ip, int port)
         {
             IsConnected = false;
-            player.ServerDisconnected();
+            OnServerDisconnected?.Invoke();
         }
 
         private void Client_receivedEvent(string[][] data, string ip, int port)
@@ -92,10 +93,7 @@ namespace Networking
             {
                 try
                 {
-                    lock (scope)
-                    {
-                        ParsePacket(s, ip, port, NetworkInterface.TCP);
-                    }
+                    ParsePacket(s, ip, port, NetworkInterface.TCP);
                 }
                 catch (Exception e)
                 {
