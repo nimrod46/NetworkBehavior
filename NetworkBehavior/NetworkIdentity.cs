@@ -22,6 +22,8 @@ namespace Networking
         public event NetworkInitialize OnNetworkInitializeEvent;
         public delegate void HasLocalAuthorityInitialize();
         public event HasLocalAuthorityInitialize OnHasLocalAuthorityInitializeEvent;
+        public delegate void DestroyEventHandler(NetworkIdentity identity);
+        public event DestroyEventHandler OnDestroyEvent;
         internal delegate void BeginSynchronization();
         internal event BeginSynchronization OnBeginSynchronization;
 
@@ -35,8 +37,6 @@ namespace Networking
         public int ownerId;
         public NetworkIdentity()
         {
-            OnNetworkInitializeEvent += OnNetworkInitialize;
-            OnHasLocalAuthorityInitializeEvent += OnHasLocalAuthorityInitialize;
             if (!NetworkBehavior.classes.ContainsKey(GetType().FullName))
             {
                 NetworkBehavior.classes.Add(GetType().FullName, GetType());
@@ -61,36 +61,11 @@ namespace Networking
             }
         }
 
-        public virtual void OnNetworkInitialize()
-        {
-        }
-
-        public virtual void OnHasLocalAuthorityInitialize()
-        {
-        }
-
-        public virtual void OnServerDisconnected()
-        {
-        }
-
-        public virtual void OnNetworkIdentityDisconnected()
-        {
-        }
-
-        public virtual void OnLocalPlayerInitialize()
-        {
-        }
-
         public void Synchronize()
         {
             OnBeginSynchronization?.Invoke();
         }
-
-        public virtual void OnDestroyed()
-        {
-        }
-
-
+        
         public void Destroy()
         {
             if(!isInServer && !hasAuthority)
@@ -103,7 +78,7 @@ namespace Networking
         [BroadcastMethod]
         private void DestroyLocally()
         {
-            OnDestroyed();
+            OnDestroyEvent?.Invoke(this);
             entities.Remove(id);
         }
 

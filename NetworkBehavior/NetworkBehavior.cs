@@ -252,7 +252,6 @@ namespace Networking
             {
                 Console.WriteLine("NetworkBehavior: no NetworkIdentity with id " + id + " was found.");
                 throw new Exception();
-                // return null;
             }
             return identity;
         }
