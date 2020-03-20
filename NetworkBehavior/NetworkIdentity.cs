@@ -55,7 +55,6 @@ namespace Networking
                 {
                     OnHasLocalAuthorityInitializeEvent?.Invoke();
                 }
-
                 hasInitialized = true;
                 OnNetworkInitializeEvent?.Invoke();
             }
@@ -68,10 +67,6 @@ namespace Networking
         
         public void Destroy()
         {
-            if(!isInServer && !hasAuthority)
-            {
-                throw new Exception("Cannot Destroy none authority identities!");
-            }
             DestroyLocally();
         }
 

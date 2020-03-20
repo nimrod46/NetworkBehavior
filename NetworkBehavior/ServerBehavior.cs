@@ -314,10 +314,8 @@ namespace Networking
             {
                 identity = Activator.CreateInstance(instance) as NetworkIdentity;
             }
-            SpawnObjectPacket packet = new SpawnObjectPacket(instance, id, clientId, args);
-            Send(packet, NetworkInterface.TCP, clientsBeforeSync.ToArray());
             int owner = 0;
-            if(clientId == -1)
+            if (clientId == -1)
             {
                 owner = serverPort;
             }
@@ -325,6 +323,8 @@ namespace Networking
             {
                 owner = clientId;
             }
+            SpawnObjectPacket packet = new SpawnObjectPacket(instance, id, owner, args);
+            Send(packet, NetworkInterface.TCP, clientsBeforeSync.ToArray());
             InitIdentityLocally(identity, owner, id, args);
             return identity;
         }
