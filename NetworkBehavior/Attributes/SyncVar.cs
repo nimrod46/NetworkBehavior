@@ -7,22 +7,37 @@ using System.Text;
 using System.Threading.Tasks;
 using PostSharp.Reflection;
 using System.Reflection;
+using System.Threading;
 
 namespace Networking
 {
+
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property,
                       AllowMultiple = true, Inherited = false)
  ]
     [PSerializable]
     public class SyncVar : LocationInterceptionAspect
     {
+        private struct VarInfo
+        {
+            public LocationInfo LocationInfo { get; set; }
+            public bool ShouldInvokeSynchronously { get; set; }
+
+            public VarInfo(LocationInfo locationInfo, bool shouldInvokeSynchronously)
+            {
+                LocationInfo = locationInfo;
+                ShouldInvokeSynchronously = shouldInvokeSynchronously;
+            }
+        }
+
         internal delegate void networkingInvokeEvent(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity id);
         internal static event networkingInvokeEvent onNetworkingInvoke;
-        internal static Dictionary<string, LocationInfo> fields = new Dictionary<string, LocationInfo>();
+        private static Dictionary<string, VarInfo> fields = new Dictionary<string, VarInfo>();
         internal static Dictionary<string, MethodInfo> hooks = new Dictionary<string, MethodInfo>();
         public NetworkInterface networkInterface = NetworkInterface.TCP;
         public string hook = "";
         public bool invokeInServer = true;
+        public bool shouldInvokeSynchronously = false;
         private PacketID packetID = PacketID.SyncVar;
 
         public override void OnSetValue(LocationInterceptionArgs args)
@@ -63,7 +78,7 @@ namespace Networking
             {
                 throw new Exception("SyncVar: Duplicate fields name: " + locationInfo.Name);
             }
-            fields.Add(locationInfo.Name, locationInfo);
+            fields.Add(locationInfo.Name, new VarInfo(locationInfo, shouldInvokeSynchronously));
             if (hook != "")
             {
                 hooks.Add(locationInfo.Name, locationInfo.DeclaringType.GetMethod(hook, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public));
@@ -76,19 +91,37 @@ namespace Networking
             List<object> temp = args.ToList();
             temp.RemoveAt(0);
             args = temp.ToArray();
-            if (!fields.TryGetValue(fieldName, out LocationInfo field))
+            if (!fields.TryGetValue(fieldName, out VarInfo field))
             {
                 throw new Exception("SyncVar: no field name " + "\"" + fieldName + "\"" + " found.");
             }
 
-            object newArg = Operations.getValueAsObject(field.LocationType.Name, args[0]);
+            object newArg = Operations.getValueAsObject(field.LocationInfo.LocationType.Name, args[0]);
             if (!net.hasAuthority)
             {
-                lock (NetworkIdentity.scope)
+
+                if (field.ShouldInvokeSynchronously)
                 {
-                    NetworkIdentity.interrupt = false;
-                    field.SetValue(net, newArg);
+                    lock (NetworkBehavior.synchronousActions)
+                    {
+                        NetworkBehavior.synchronousActions.Add(() =>
+                        {
+                            lock (NetworkIdentity.scope)
+                            {
+                                NetworkIdentity.interrupt = false;
+                                field.LocationInfo.SetValue(net, newArg);
+                            }
+                        });
+                    }
                 }
+                else
+                {
+                    lock (NetworkIdentity.scope)
+                    {
+                        field.LocationInfo.SetValue(net, newArg);
+                    }
+                }
+
             }
 
             if (hooks.TryGetValue(fieldName, out MethodInfo method))
@@ -97,7 +130,18 @@ namespace Networking
                 {
                     throw new Exception("No hooked method: " + method.Name + " was found, please check the method name!");
                 }
-                method.Invoke(net, null);
+
+                if (field.ShouldInvokeSynchronously)
+                {
+                    lock (NetworkBehavior.synchronousActions)
+                    {
+                        NetworkBehavior.synchronousActions.Add(() => method.Invoke(net, null));
+                    }
+                }
+                else
+                {
+                    method.Invoke(net, null);
+                }
             }
         }
     }

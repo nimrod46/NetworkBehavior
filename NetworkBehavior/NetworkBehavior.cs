@@ -10,6 +10,8 @@ using Networking;
 using System.Reflection;
 using System.IO;
 using NetworkingLib;
+using System.Threading;
+using System.Windows.Threading;
 
 namespace Networking
 {
@@ -49,6 +51,7 @@ namespace Networking
 
     public abstract class NetworkBehavior
     {
+        internal static List<Action> synchronousActions = new List<Action>();
         public delegate void LobbyInfoEventHandler(string info);
         public event LobbyInfoEventHandler OnLobbyInfoEvent;
         public delegate void IdentityInitializeEventHandler(NetworkIdentity client);
@@ -268,6 +271,18 @@ namespace Networking
                 Console.Write("!" + item.ToString() + "!");
             }
             Console.WriteLine();
+        }
+
+        public static void RunActionsSynchronously()
+        {
+            lock(synchronousActions)
+            {
+                foreach(Action action in synchronousActions)
+                {
+                    action.Invoke();
+                }
+                synchronousActions.Clear();
+            }
         }
     }
 }

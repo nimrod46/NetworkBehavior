@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Networking;
 using NetworkingLib;
@@ -246,7 +247,8 @@ namespace Networking
                     break;
                 case PacketID.Command:
                     packet = new CommandPacket(args, networkIdentity.id);
-                    SendToAUser(packet, networkInterface, clients[networkIdentity.id].Ip, clients[networkIdentity.id].TcpPort);
+                    Console.WriteLine(networkIdentity.id);
+                    SendToAUser(packet, networkInterface, clients[networkIdentity.ownerId].Ip, clients[networkIdentity.ownerId].TcpPort);
                     break;
                 default:
                     break;

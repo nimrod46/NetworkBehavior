@@ -10,6 +10,7 @@ using PostSharp.Serialization;
 using PostSharp.Aspects;
 using PostSharp.Aspects.Configuration;
 using System.Reflection;
+using System.Threading;
 
 namespace Networking
 {
@@ -19,13 +20,27 @@ namespace Networking
     [PSerializable]
     public abstract class MethodNetworkAttribute : MethodInterceptionAspect
     {
-        public NetworkInterface networkInterface = NetworkInterface.TCP;
-        public bool networkInvokeOnNoneAuthority = true;
-        public bool invokeInServer = true;
+        private struct MethodInfo
+        {
+            public MethodBase Method { get; set; }
+            public bool ShouldInvokeSynchronously { get; set; }
+
+            public MethodInfo(MethodBase method, bool shouldInvokeSynchronously)
+            {
+                Method = method;
+                ShouldInvokeSynchronously = shouldInvokeSynchronously;
+            }
+        }
+
+        private static readonly Dictionary<string, MethodInfo> methods = new Dictionary<string, MethodInfo>();
         internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
         internal static event networkingInvokeEvent onNetworkingInvoke;
-        internal static Dictionary<string, MethodBase> methods = new Dictionary<string, MethodBase>();
-        internal PacketID packetID;
+        public NetworkInterface networkInterface = NetworkInterface.TCP;
+        public bool shoudlInvokeOnNoneAuthority = true;
+        public bool shouldInvokeInServer = true;
+        public bool shouldInvokeSynchronously = false;
+        private PacketID packetID;
+
         internal MethodNetworkAttribute(PacketID packetID)
         {
             this.packetID = packetID;
@@ -40,7 +55,7 @@ namespace Networking
                 return;
             }
 
-            if (!networkInvokeOnNoneAuthority && !((args.Instance as NetworkIdentity).hasAuthority && !(args.Instance as NetworkIdentity).isInServer))
+            if (!shoudlInvokeOnNoneAuthority && !((args.Instance as NetworkIdentity).hasAuthority && !(args.Instance as NetworkIdentity).isInServer))
             {
                 base.OnInvoke(args);
                 return;
@@ -56,7 +71,7 @@ namespace Networking
                 }
             }
 
-            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, invokeInServer, args.Instance as NetworkIdentity);
+            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, shouldInvokeInServer, args.Instance as NetworkIdentity);
         }
 
         public override void RuntimeInitialize(MethodBase method)
@@ -66,19 +81,19 @@ namespace Networking
             {
                 throw new Exception("MethodNetworkAttribute: Duplicate method name: " + method.Name);
             }
-            methods.Add(method.ReflectedType.Name + method.Name, method);
+            methods.Add(method.ReflectedType.Name + method.Name, new MethodInfo(method, shouldInvokeSynchronously));
         }
 
         internal static void networkInvoke(NetworkIdentity net, object[] args)
         {
-            MethodBase method;
+            MethodInfo methodInfo;
             string methodName = args[0].ToString();
             List<object> temp = args.ToList();
             temp.RemoveAt(0);
             temp.RemoveAt(temp.Count - 1);
             args = temp.ToArray();
             Type t = net.GetType();
-            while (!methods.TryGetValue(t.Name + methodName, out method))
+            while (!methods.TryGetValue(t.Name + methodName, out methodInfo))
             {
                 t = t.BaseType;
             }
@@ -88,7 +103,7 @@ namespace Networking
             {
                 newArgs = new object[args.Length];
                 int i = 0;
-                foreach (ParameterInfo item in method.GetParameters())
+                foreach (ParameterInfo item in methodInfo.Method.GetParameters())
                 {
                     newArgs[i] = Operations.getValueAsObject(item.ParameterType.Name, args[i]);
                     i++;
@@ -98,7 +113,17 @@ namespace Networking
             lock (NetworkIdentity.scope)
             {
                 NetworkIdentity.interrupt = false;
-                method.Invoke(net, newArgs);
+                if (methodInfo.ShouldInvokeSynchronously)
+                {
+                    lock (NetworkBehavior.synchronousActions)
+                    {
+                        NetworkBehavior.synchronousActions.Add(() => methodInfo.Method.Invoke(net, newArgs));
+                    }
+                }
+                else
+                {
+                    methodInfo.Method.Invoke(net, newArgs);
+                }
             }
         }
     }
