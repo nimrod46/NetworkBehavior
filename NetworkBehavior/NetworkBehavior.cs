@@ -76,7 +76,7 @@ namespace Networking
         }
         protected abstract void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
 
-        protected abstract void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
+        protected abstract void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, bool haveBeenInvokedInAuthority, NetworkIdentity networkIdentity);
        
         protected virtual void ReceivedEvent(string[] args, string ip, int port)
         {
@@ -117,7 +117,7 @@ namespace Networking
                     OnLobbyInfoEvent?.Invoke(args[0]);
                     break;
                 case (int)PacketID.BroadcastMethod:
-                    invokeMethodLocaly(args);
+                        invokeMethodLocaly(args);
                     break;
                 case (int)PacketID.Command:
                     identity = getNetworkIdentityFromLastArg(ref args);
@@ -160,9 +160,15 @@ namespace Networking
             {
                 return;
             }
+            
+            if (bool.Parse(srts[srts.Length - 2]) && identity.hasAuthority) //already invoked
+            {
+                return; 
+            }
             MethodNetworkAttribute.networkInvoke(identity, srts);
-        }     
-        
+
+        }
+
         private object spawnObjectLocaly(string fullName)
         {
             try
@@ -233,9 +239,9 @@ namespace Networking
                     {
                         ((PropertyInfo)p).SetValue(obj, Convert.ChangeType(valuesByFields[p.Name], ((PropertyInfo)p).PropertyType));
                     }
-                    if (SyncVar.hooks.ContainsKey(p.Name))
+                    if (SyncVar.hooks.ContainsKey(p.DeclaringType.Name + p.Name))
                     {
-                        SyncVar.hooks[p.Name].Invoke(obj, null);
+                        SyncVar.hooks[p.DeclaringType.Name + p.Name].Invoke(obj, null);
                     }
                 });
         }
@@ -253,8 +259,8 @@ namespace Networking
         {
             if (!NetworkIdentity.entities.TryGetValue(id, out NetworkIdentity identity))
             {
-                Console.WriteLine("NetworkBehavior: no NetworkIdentity with id " + id + " was found.");
-                throw new Exception();
+                Console.WriteLine("Warning - NetworkBehavior: no NetworkIdentity with id " + id + " was found.");
+                return null;
             }
             return identity;
         }

@@ -21,7 +21,7 @@ namespace Networking
     {
         public Command() : base(PacketID.Command)
         {
-
+            shouldInvokeImmediatelyIfHasAuthority = false;
         }
     }
 }

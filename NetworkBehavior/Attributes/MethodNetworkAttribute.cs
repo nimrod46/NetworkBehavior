@@ -33,12 +33,13 @@ namespace Networking
         }
 
         private static readonly Dictionary<string, MethodInfo> methods = new Dictionary<string, MethodInfo>();
-        internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
+        internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, bool haveBeenInvokedInAuthority, NetworkIdentity networkIdentity);
         internal static event networkingInvokeEvent onNetworkingInvoke;
         public NetworkInterface networkInterface = NetworkInterface.TCP;
         public bool shoudlInvokeOnNoneAuthority = true;
         public bool shouldInvokeInServer = true;
         public bool shouldInvokeSynchronously = false;
+        protected bool shouldInvokeImmediatelyIfHasAuthority = true;
         private PacketID packetID;
 
         internal MethodNetworkAttribute(PacketID packetID)
@@ -48,10 +49,10 @@ namespace Networking
 
         public override sealed void OnInvoke(MethodInterceptionArgs args)
         {
-           if (!args.Instance.GetType().Equals(args.Method.DeclaringType) && (args.Method.Attributes & MethodAttributes.NewSlot) != 0)
+            if (!args.Instance.GetType().Equals(args.Method.DeclaringType) && (args.Method.Attributes & MethodAttributes.NewSlot) != 0)
             {
                 base.OnInvoke(args);
-               // Console.WriteLine("Net method execute through base: " +args.Method.Name);
+                // Console.WriteLine("Net method execute through base: " +args.Method.Name);
                 return;
             }
 
@@ -60,6 +61,7 @@ namespace Networking
                 base.OnInvoke(args);
                 return;
             }
+            bool shouldInvokeImmediately = shouldInvokeImmediatelyIfHasAuthority && (args.Instance as NetworkIdentity).hasAuthority;
 
             lock (NetworkIdentity.scope)
             {
@@ -69,9 +71,16 @@ namespace Networking
                     base.OnInvoke(args);
                     return;
                 }
+                else
+                {
+                    if(shouldInvokeImmediately)
+                    {
+                        base.OnInvoke(args);
+                    }
+                }
             }
 
-            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, shouldInvokeInServer, args.Instance as NetworkIdentity);
+            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, shouldInvokeInServer, shouldInvokeImmediately, args.Instance as NetworkIdentity);
         }
 
         public override void RuntimeInitialize(MethodBase method)
@@ -90,14 +99,15 @@ namespace Networking
             string methodName = args[0].ToString();
             List<object> temp = args.ToList();
             temp.RemoveAt(0);
-            temp.RemoveAt(temp.Count - 1);
+            temp.RemoveAt(temp.Count - 1);// remove shouldInvokeInServer
+            temp.RemoveAt(temp.Count - 1);//remove shouldInvokeSynchronously
             args = temp.ToArray();
             Type t = net.GetType();
             while (!methods.TryGetValue(t.Name + methodName, out methodInfo))
             {
                 t = t.BaseType;
             }
-           
+            
             object[] newArgs = null;
             if (args.Length != 0 && (string)args[0] != "")
             {
@@ -110,21 +120,29 @@ namespace Networking
                 }
             }
 
-            lock (NetworkIdentity.scope)
+            if (methodInfo.ShouldInvokeSynchronously)
             {
-                NetworkIdentity.interrupt = false;
-                if (methodInfo.ShouldInvokeSynchronously)
+                lock (NetworkBehavior.synchronousActions)
                 {
-                    lock (NetworkBehavior.synchronousActions)
+                    NetworkBehavior.synchronousActions.Add(() =>
                     {
-                        NetworkBehavior.synchronousActions.Add(() => methodInfo.Method.Invoke(net, newArgs));
-                    }
+                        lock (NetworkIdentity.scope)
+                        {
+                            NetworkIdentity.interrupt = false;
+                            methodInfo.Method.Invoke(net, newArgs);
+                        }
+                    });
                 }
-                else
+            }
+            else
+            {
+                lock (NetworkIdentity.scope)
                 {
+                    NetworkIdentity.interrupt = false;
                     methodInfo.Method.Invoke(net, newArgs);
                 }
             }
+
         }
     }
 }

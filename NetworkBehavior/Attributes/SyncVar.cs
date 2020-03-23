@@ -36,6 +36,7 @@ namespace Networking
         internal static Dictionary<string, MethodInfo> hooks = new Dictionary<string, MethodInfo>();
         public NetworkInterface networkInterface = NetworkInterface.TCP;
         public string hook = "";
+        public bool isDisabled = false;
         public bool invokeInServer = true;
         public bool shouldInvokeSynchronously = false;
         private PacketID packetID = PacketID.SyncVar;
@@ -44,6 +45,10 @@ namespace Networking
         {
             base.OnSetValue(args);
 
+            if(isDisabled)
+            {
+                return;
+            }
             if(!(args.Instance as NetworkIdentity).hasInitialized)
             {
                 return;
@@ -68,20 +73,21 @@ namespace Networking
             {
                 throw new Exception("Arguments cannot be none value type");
             }
+
             onNetworkingInvoke?.Invoke(args, packetID, networkInterface, invokeInServer, args.Instance as NetworkIdentity);
         }
 
         public override void RuntimeInitialize(LocationInfo locationInfo)
         {
             base.RuntimeInitialize(locationInfo);
-            if (fields.ContainsKey(locationInfo.Name))
+            if (fields.ContainsKey(locationInfo.DeclaringType.Name + locationInfo.Name))
             {
                 throw new Exception("SyncVar: Duplicate fields name: " + locationInfo.Name);
             }
-            fields.Add(locationInfo.Name, new VarInfo(locationInfo, shouldInvokeSynchronously));
+            fields.Add(locationInfo.DeclaringType.Name + locationInfo.Name, new VarInfo(locationInfo, shouldInvokeSynchronously));
             if (hook != "")
             {
-                hooks.Add(locationInfo.Name, locationInfo.DeclaringType.GetMethod(hook, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public));
+                hooks.Add(locationInfo.DeclaringType.Name + locationInfo.Name, locationInfo.DeclaringType.GetMethod(hook, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public));
             }
         }
 
@@ -91,9 +97,11 @@ namespace Networking
             List<object> temp = args.ToList();
             temp.RemoveAt(0);
             args = temp.ToArray();
-            if (!fields.TryGetValue(fieldName, out VarInfo field))
+            VarInfo field;
+            Type t = net.GetType();
+            while (!fields.TryGetValue(t.Name + fieldName, out field))
             {
-                throw new Exception("SyncVar: no field name " + "\"" + fieldName + "\"" + " found.");
+                t = t.BaseType;
             }
 
             object newArg = Operations.getValueAsObject(field.LocationInfo.LocationType.Name, args[0]);
@@ -124,7 +132,7 @@ namespace Networking
 
             }
 
-            if (hooks.TryGetValue(fieldName, out MethodInfo method))
+            if (hooks.TryGetValue(t.Name + fieldName, out MethodInfo method))
             {
                 if (method == null)
                 {

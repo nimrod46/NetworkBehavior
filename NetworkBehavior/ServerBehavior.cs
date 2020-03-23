@@ -107,7 +107,7 @@ namespace Networking
                 case (int)PacketID.BroadcastMethod:
                     if (networkInterface == NetworkInterface.TCP)
                     {
-                        server.Broadcast(originArgs, clientsBeforeSync.ToArray());
+                        server.Broadcast(originArgs, clientsBeforeSync.ToArray().Length);
                     }
                     else
                     {
@@ -232,7 +232,7 @@ namespace Networking
             }
         }
 
-        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
+        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, bool haveBeenInvokedInAuthority, NetworkIdentity networkIdentity)
         {
             if (!IsRunning)
             {
@@ -242,12 +242,11 @@ namespace Networking
             switch (packetID)
             {
                 case PacketID.BroadcastMethod:
-                    packet = new BroadcastMethodPacket(args, invokeInServer, networkIdentity.id);
+                    packet = new BroadcastMethodPacket(args, invokeInServer, haveBeenInvokedInAuthority, networkIdentity.id);
                     ParsePacket(packet.GetArgs().ToArray(), null, 0, networkInterface);
                     break;
                 case PacketID.Command:
                     packet = new CommandPacket(args, networkIdentity.id);
-                    Console.WriteLine(networkIdentity.id);
                     SendToAUser(packet, networkInterface, clients[networkIdentity.ownerId].Ip, clients[networkIdentity.ownerId].TcpPort);
                     break;
                 default:
