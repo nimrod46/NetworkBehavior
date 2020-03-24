@@ -67,7 +67,7 @@ namespace Networking
             {
                 Console.WriteLine("New player at: " + GetIdByIpAndPort(ip, port));
                 SpawnObjectPacket spawnPacket;
-                foreach (NetworkIdentity i in NetworkIdentity.entities.Values)
+                foreach (NetworkIdentity i in NetworkIdentity.entities.Values.Reverse())
                 {
                     Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(i);
                     var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();

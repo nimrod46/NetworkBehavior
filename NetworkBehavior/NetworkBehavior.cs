@@ -221,8 +221,18 @@ namespace Networking
         protected Dictionary<string, string> GetValuesByFieldsFromObject(object obj)
         {
             Type type = obj.GetType();
-            return type.GetFields(getBindingFlags).Cast<MemberInfo>().Concat(type.GetProperties(getBindingFlags)).Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).
-                ToDictionary(p => p.Name.ToString(), p => (p is FieldInfo) ? ((FieldInfo) p).GetValue(obj).ToString() : ((PropertyInfo)p).GetValue(obj).ToString());
+            List<MemberInfo> members = type.GetFields(getBindingFlags).Cast<MemberInfo>().Concat(type.GetProperties(getBindingFlags)).Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToList();
+            Dictionary<string, string> dic = members.ToDictionary(p => p.Name.ToString(), p =>
+                (p is FieldInfo) ?
+            typeof(NetworkIdentity).IsAssignableFrom(((FieldInfo)p).FieldType) ?
+            ((FieldInfo)p).GetValue(obj) != null ? (((FieldInfo)p).GetValue(obj) as NetworkIdentity).id.ToString() : "null" :
+            ((FieldInfo)p).GetValue(obj).ToString() :
+
+            typeof(NetworkIdentity).IsAssignableFrom(((PropertyInfo)p).PropertyType) ? 
+            ((PropertyInfo)p).GetValue(obj) != null ? (((PropertyInfo)p).GetValue(obj) as NetworkIdentity).id.ToString() : "null" :
+            ((PropertyInfo)p).GetValue(obj).ToString()
+            );
+            return dic;
         }
 
         private void SetObjectFieldsByValues(object obj, Dictionary<string, string> valuesByFields)
@@ -231,17 +241,19 @@ namespace Networking
             type.GetFields(getBindingFlags).Cast<MemberInfo>().Concat(type.GetProperties(getBindingFlags)).Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).
                 Where(p => valuesByFields.Keys.Contains(p.Name)).ToList().ForEach(p =>
                 {
-                    if (p is FieldInfo)
-                    {
-                        ((FieldInfo)p).SetValue(obj, Convert.ChangeType(valuesByFields[p.Name], ((FieldInfo)p).FieldType));
-                    }
-                    else
-                    {
-                        ((PropertyInfo)p).SetValue(obj, Convert.ChangeType(valuesByFields[p.Name], ((PropertyInfo)p).PropertyType));
-                    }
-                    if (SyncVar.hooks.ContainsKey(p.DeclaringType.Name + p.Name))
-                    {
-                        SyncVar.hooks[p.DeclaringType.Name + p.Name].Invoke(obj, null);
+                    if (!valuesByFields[p.Name].Equals("null")) {
+                        if (p is FieldInfo)
+                        {
+                            ((FieldInfo)p).SetValue(obj, Operations.getValueAsObject(((FieldInfo)p).FieldType.Name, valuesByFields[p.Name]));
+                        }
+                        else
+                        {
+                            ((PropertyInfo)p).SetValue(obj, Operations.getValueAsObject(((PropertyInfo)p).PropertyType.Name, valuesByFields[p.Name]));
+                        }
+                        if (SyncVar.hooks.ContainsKey(p.DeclaringType.Name + p.Name))
+                        {
+                            SyncVar.hooks[p.DeclaringType.Name + p.Name].Invoke(obj, null);
+                        }
                     }
                 });
         }

@@ -69,11 +69,6 @@ namespace Networking
                 throw new Exception("Cannot change sync var in an none authority identity");
             }
 
-            if ((args == null || !args.Location.LocationType.IsValueType) && args.Location.LocationType.Name != "String")
-            {
-                throw new Exception("Arguments cannot be none value type");
-            }
-
             onNetworkingInvoke?.Invoke(args, packetID, networkInterface, invokeInServer, args.Instance as NetworkIdentity);
         }
 

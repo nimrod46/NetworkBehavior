@@ -24,7 +24,13 @@ namespace Networking
         {
             base.generateData();
             args.Add(locationArg.Location.Name);
-            args.Add(locationArg.Value.ToString());
+            if(locationArg.Value is NetworkIdentity)
+            {
+                args.Add((locationArg.Value as NetworkIdentity).id.ToString());
+            }else 
+            {
+                args.Add(locationArg.Value.ToString());
+            }
             args.Add(invokeInServer.ToString());
             args.Add(id.ToString());
         }
