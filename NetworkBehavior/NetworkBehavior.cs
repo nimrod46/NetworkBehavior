@@ -117,7 +117,7 @@ namespace Networking
                     OnLobbyInfoEvent?.Invoke(args[0]);
                     break;
                 case (int)PacketID.BroadcastMethod:
-                        invokeMethodLocaly(args);
+                    invokeMethodLocaly(args);
                     break;
                 case (int)PacketID.Command:
                     identity = getNetworkIdentityFromLastArg(ref args);

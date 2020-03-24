@@ -49,13 +49,6 @@ namespace Networking
 
         public override sealed void OnInvoke(MethodInterceptionArgs args)
         {
-            if (!args.Instance.GetType().Equals(args.Method.DeclaringType) && (args.Method.Attributes & MethodAttributes.NewSlot) != 0)
-            {
-                base.OnInvoke(args);
-                // Console.WriteLine("Net method execute through base: " +args.Method.Name);
-                return;
-            }
-
             if (!shoudlInvokeOnNoneAuthority && !((args.Instance as NetworkIdentity).hasAuthority && !(args.Instance as NetworkIdentity).isInServer))
             {
                 base.OnInvoke(args);
@@ -79,7 +72,6 @@ namespace Networking
                     }
                 }
             }
-
             onNetworkingInvoke?.Invoke(args, packetID, networkInterface, shouldInvokeInServer, shouldInvokeImmediately, args.Instance as NetworkIdentity);
         }
 
