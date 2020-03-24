@@ -107,11 +107,11 @@ namespace Networking
                 case (int)PacketID.BroadcastMethod:
                     if (networkInterface == NetworkInterface.TCP)
                     {
-                        server.Broadcast(originArgs, clientsBeforeSync.ToArray().Length);
+                        server.Broadcast(originArgs,  clientsBeforeSync.Concat(new int[] { port }).ToArray());
                     }
                     else
                     {
-                        directBroadcast(originArgs, clientsBeforeSync.ToArray());
+                        directBroadcast(originArgs, clientsBeforeSync.Concat(new int[] { port }).ToArray());
                     }
 
                     if (!bool.Parse(args[args.Length - 2]))
@@ -123,11 +123,11 @@ namespace Networking
                 case (int)PacketID.SyncVar:
                     if (networkInterface == NetworkInterface.TCP)
                     {
-                        server.Broadcast(originArgs, clientsBeforeSync.ToArray());
+                        server.Broadcast(originArgs, clientsBeforeSync.Concat(new int[] { port }).ToArray());
                     }
                     else
                     {
-                        directBroadcast(originArgs, clientsBeforeSync.ToArray());
+                        directBroadcast(originArgs, clientsBeforeSync.Concat(new int[] { port }).ToArray());
                     }
 
                     if (!bool.Parse(args[args.Length - 2]))
@@ -225,14 +225,14 @@ namespace Networking
             {
                 case PacketID.SyncVar:
                     packet = new SyncVarPacket(args, invokeInServer, networkIdentity.id);
-                    ParsePacket(packet.GetArgs().ToArray(), null, 0, networkInterface);
+                    Send(packet, networkInterface, clientsBeforeSync.ToArray());
                     break;
                 default:
                     break;
             }
         }
 
-        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, bool haveBeenInvokedInAuthority, NetworkIdentity networkIdentity)
+        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
             if (!IsRunning)
             {
@@ -242,8 +242,8 @@ namespace Networking
             switch (packetID)
             {
                 case PacketID.BroadcastMethod:
-                    packet = new BroadcastMethodPacket(args, invokeInServer, haveBeenInvokedInAuthority, networkIdentity.id);
-                    ParsePacket(packet.GetArgs().ToArray(), null, 0, networkInterface);
+                    packet = new BroadcastMethodPacket(args, invokeInServer, networkIdentity.id);
+                    Send(packet, networkInterface, clientsBeforeSync.ToArray());
                     break;
                 case PacketID.Command:
                     packet = new CommandPacket(args, networkIdentity.id);

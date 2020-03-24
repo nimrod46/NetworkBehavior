@@ -33,23 +33,21 @@ namespace Networking
         internal delegate void networkingInvokeEvent(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity id);
         internal static event networkingInvokeEvent onNetworkingInvoke;
         private static Dictionary<string, VarInfo> fields = new Dictionary<string, VarInfo>();
-        internal static Dictionary<string, MethodInfo> hooks = new Dictionary<string, MethodInfo>();
         public NetworkInterface networkInterface = NetworkInterface.TCP;
         public string hook = "";
         public bool isDisabled = false;
         public bool invokeInServer = true;
         public bool shouldInvokeSynchronously = false;
         private PacketID packetID = PacketID.SyncVar;
+        private MethodInfo hookedMethod;
 
         public override void OnSetValue(LocationInterceptionArgs args)
         {
             base.OnSetValue(args);
 
-            if(isDisabled)
-            {
-                return;
-            }
-            if(!(args.Instance as NetworkIdentity).hasInitialized)
+            hookedMethod?.Invoke(args.Instance as NetworkIdentity, null);
+
+            if (isDisabled)
             {
                 return;
             }
@@ -61,15 +59,21 @@ namespace Networking
                     NetworkIdentity.interrupt = true;
                     return;
                 }
+                else
+                {
+                    if (!(args.Instance as NetworkIdentity).hasAuthority && !(args.Instance as NetworkIdentity).isInServer)
+                    {
+                    }
+                    else
+                    {
+                        if ((args.Instance as NetworkIdentity).hasInitialized)
+                        {
+                            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, invokeInServer, args.Instance as NetworkIdentity);
+                        }
+                    }
+                }
             }
 
-            if (!(args.Instance as NetworkIdentity).hasAuthority)
-            {
-                return;
-                throw new Exception("Cannot change sync var in an none authority identity");
-            }
-
-            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, invokeInServer, args.Instance as NetworkIdentity);
         }
 
         public override void RuntimeInitialize(LocationInfo locationInfo)
@@ -82,7 +86,8 @@ namespace Networking
             fields.Add(locationInfo.DeclaringType.Name + locationInfo.Name, new VarInfo(locationInfo, shouldInvokeSynchronously));
             if (hook != "")
             {
-                hooks.Add(locationInfo.DeclaringType.Name + locationInfo.Name, locationInfo.DeclaringType.GetMethod(hook, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public));
+                // hooks.Add(locationInfo.DeclaringType.Name + locationInfo.Name, locationInfo.DeclaringType.GetMethod(hook, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public));
+                hookedMethod = locationInfo.DeclaringType.GetMethod(hook, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             }
         }
 
@@ -100,50 +105,26 @@ namespace Networking
             }
 
             object newArg = Operations.getValueAsObject(field.LocationInfo.LocationType.Name, args[0]);
-            if (!net.hasAuthority)
+            if (field.ShouldInvokeSynchronously)
             {
-
-                if (field.ShouldInvokeSynchronously)
+                lock (NetworkBehavior.synchronousActions)
                 {
-                    lock (NetworkBehavior.synchronousActions)
+                    NetworkBehavior.synchronousActions.Add(() =>
                     {
-                        NetworkBehavior.synchronousActions.Add(() =>
+                        lock (NetworkIdentity.scope)
                         {
-                            lock (NetworkIdentity.scope)
-                            {
-                                NetworkIdentity.interrupt = false;
-                                field.LocationInfo.SetValue(net, newArg);
-                            }
-                        });
-                    }
+                            NetworkIdentity.interrupt = false;
+                            field.LocationInfo.SetValue(net, newArg);
+                        }
+                    });
                 }
-                else
-                {
-                    lock (NetworkIdentity.scope)
-                    {
-                        field.LocationInfo.SetValue(net, newArg);
-                    }
-                }
-
             }
-
-            if (hooks.TryGetValue(t.Name + fieldName, out MethodInfo method))
+            else
             {
-                if (method == null)
+                lock (NetworkIdentity.scope)
                 {
-                    throw new Exception("No hooked method: " + method.Name + " was found, please check the method name!");
-                }
-
-                if (field.ShouldInvokeSynchronously)
-                {
-                    lock (NetworkBehavior.synchronousActions)
-                    {
-                        NetworkBehavior.synchronousActions.Add(() => method.Invoke(net, null));
-                    }
-                }
-                else
-                {
-                    method.Invoke(net, null);
+                    NetworkIdentity.interrupt = false;
+                    field.LocationInfo.SetValue(net, newArg);
                 }
             }
         }

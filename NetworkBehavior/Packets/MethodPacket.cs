@@ -11,13 +11,11 @@ namespace Networking
     {
         protected MethodInterceptionArgs methodArgs;
         protected bool invokeInServer;
-        protected bool alreadyInvokeInAuthority;
         protected int id;
-        public MethodPacket (MethodInterceptionArgs methodArgs, bool invokeInServer, bool alreadyInvokeInAuthority, PacketID packetId, int id) : base(packetId)
+        public MethodPacket (MethodInterceptionArgs methodArgs, bool invokeInServer, PacketID packetId, int id) : base(packetId)
         {
             this.methodArgs = methodArgs;
             this.invokeInServer = invokeInServer;
-            this.alreadyInvokeInAuthority = alreadyInvokeInAuthority;
             this.id = id;
             generateData();
         }
@@ -44,7 +42,6 @@ namespace Networking
                 }
             }
             args.Insert(1, methodArgs.Method.Name);
-            args.Add(alreadyInvokeInAuthority.ToString());
             args.Add(invokeInServer.ToString());
             args.Add(id.ToString());
         }

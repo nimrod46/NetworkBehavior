@@ -51,6 +51,7 @@ namespace Networking
 
     public abstract class NetworkBehavior
     {
+        internal const string WARNING_MESSAGEP_REFIX = "NetworkBehavior lib WARNING: ";
         internal static List<Action> synchronousActions = new List<Action>();
         public delegate void LobbyInfoEventHandler(string info);
         public event LobbyInfoEventHandler OnLobbyInfoEvent;
@@ -76,7 +77,7 @@ namespace Networking
         }
         protected abstract void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
 
-        protected abstract void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, bool haveBeenInvokedInAuthority, NetworkIdentity networkIdentity);
+        protected abstract void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
        
         protected virtual void ReceivedEvent(string[] args, string ip, int port)
         {
@@ -147,7 +148,7 @@ namespace Networking
                     InitIdentityLocally(identity, int.Parse(args[1]), int.Parse(args[args.Length - 1]), valuesOfFields);
                     break;
                 default:
-                    Console.Error.WriteLine("Invalid packet has been received!");
+                    PrintWarning("invalid packet has been received!");
                     print(args);
                     break;
             }
@@ -161,12 +162,7 @@ namespace Networking
                 return;
             }
             
-            if (bool.Parse(srts[srts.Length - 2]) && identity.hasAuthority) //already invoked
-            {
-                return; 
-            }
             MethodNetworkAttribute.networkInvoke(identity, srts);
-
         }
 
         private object spawnObjectLocaly(string fullName)
@@ -250,10 +246,6 @@ namespace Networking
                         {
                             ((PropertyInfo)p).SetValue(obj, Operations.getValueAsObject(((PropertyInfo)p).PropertyType.Name, valuesByFields[p.Name]));
                         }
-                        if (SyncVar.hooks.ContainsKey(p.DeclaringType.Name + p.Name))
-                        {
-                            SyncVar.hooks[p.DeclaringType.Name + p.Name].Invoke(obj, null);
-                        }
                     }
                 });
         }
@@ -271,7 +263,7 @@ namespace Networking
         {
             if (!NetworkIdentity.entities.TryGetValue(id, out NetworkIdentity identity))
             {
-                Console.WriteLine("Warning - NetworkBehavior: no NetworkIdentity with id " + id + " was found.");
+                PrintWarning("no NetworkIdentity with id " + id + " was found.");
                 return null;
             }
             return identity;
@@ -301,6 +293,11 @@ namespace Networking
                 }
                 synchronousActions.Clear();
             }
+        }
+
+        internal static void PrintWarning(string message)
+        {
+            Console.Error.WriteLine(WARNING_MESSAGEP_REFIX + message);
         }
     }
 }

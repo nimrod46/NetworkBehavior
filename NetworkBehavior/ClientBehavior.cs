@@ -122,7 +122,7 @@ namespace Networking
             }
         }
 
-        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, bool haveBeenInvokedInAuthority, NetworkIdentity networkIdentity)
+        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
             if (!IsConnected)
             {
@@ -132,7 +132,7 @@ namespace Networking
             switch (packetID)
             {
                 case PacketID.BroadcastMethod:
-                    packet = new BroadcastMethodPacket(args, invokeInServer, haveBeenInvokedInAuthority, networkIdentity.id);
+                    packet = new BroadcastMethodPacket(args, invokeInServer, networkIdentity.id);
                     Send(packet, networkInterface);
                     break;
                 case PacketID.Command:

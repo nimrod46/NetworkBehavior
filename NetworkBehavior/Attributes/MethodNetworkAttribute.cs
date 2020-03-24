@@ -33,10 +33,9 @@ namespace Networking
         }
 
         private static readonly Dictionary<string, MethodInfo> methods = new Dictionary<string, MethodInfo>();
-        internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, bool haveBeenInvokedInAuthority, NetworkIdentity networkIdentity);
+        internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
         internal static event networkingInvokeEvent onNetworkingInvoke;
         public NetworkInterface networkInterface = NetworkInterface.TCP;
-        public bool shoudlInvokeOnNoneAuthority = true;
         public bool shouldInvokeInServer = true;
         public bool shouldInvokeSynchronously = false;
         protected bool shouldInvokeImmediatelyIfHasAuthority = true;
@@ -49,13 +48,12 @@ namespace Networking
 
         public override sealed void OnInvoke(MethodInterceptionArgs args)
         {
-            if (!shoudlInvokeOnNoneAuthority && !((args.Instance as NetworkIdentity).hasAuthority && !(args.Instance as NetworkIdentity).isInServer))
+            if (!(args.Instance as NetworkIdentity).hasInitialized)
             {
-                base.OnInvoke(args);
+                NetworkBehavior.PrintWarning("MethodNetworkAttribute was called on none initialized identity");
                 return;
             }
-            bool shouldInvokeImmediately = shouldInvokeImmediatelyIfHasAuthority && (args.Instance as NetworkIdentity).hasAuthority;
-
+            
             lock (NetworkIdentity.scope)
             {
                 if (!NetworkIdentity.interrupt)
@@ -66,14 +64,24 @@ namespace Networking
                 }
                 else
                 {
-                    if(shouldInvokeImmediately)
+                    if (!(args.Instance as NetworkIdentity).hasAuthority && !(args.Instance as NetworkIdentity).isInServer)
                     {
-                        base.OnInvoke(args);
+                        NetworkBehavior.PrintWarning(args.Method.Name + " was called on none authority identity");
+                        return;
+                    }
+                    else
+                    {
+                        onNetworkingInvoke?.Invoke(args, packetID, networkInterface, shouldInvokeInServer, args.Instance as NetworkIdentity);
                     }
                 }
             }
-            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, shouldInvokeInServer, shouldInvokeImmediately, args.Instance as NetworkIdentity);
+
+            if (shouldInvokeImmediatelyIfHasAuthority)
+            {
+                base.OnInvoke(args);
+            }
         }
+    
 
         public override void RuntimeInitialize(MethodBase method)
         {
@@ -91,8 +99,7 @@ namespace Networking
             string methodName = args[0].ToString();
             List<object> temp = args.ToList();
             temp.RemoveAt(0);
-            temp.RemoveAt(temp.Count - 1);// remove shouldInvokeInServer
-            temp.RemoveAt(temp.Count - 1);//remove shouldInvokeSynchronously
+            temp.RemoveAt(temp.Count - 1);//Remove shouldInvokeInServer
             args = temp.ToArray();
             Type t = net.GetType();
             while (!methods.TryGetValue(t.Name + methodName, out methodInfo))
