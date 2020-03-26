@@ -7,19 +7,14 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    internal class DircetInterfaceInitiatingPacket : Packet
+    internal class DircetInterfaceInitiatingPacket : NetworkIdentityBasePacket
     {
-        protected object id;
-        public DircetInterfaceInitiatingPacket(int id) : base(PacketID.DircetInterfaceInitiating)
+        public DircetInterfaceInitiatingPacket(int id) : base(PacketId.DircetInterfaceInitiating, id)
         {
-            this.id = id;
-            generateData();
         }
 
-        protected override void generateData()
+        public DircetInterfaceInitiatingPacket(List<object> args) : base(PacketId.DircetInterfaceInitiating, args)
         {
-            base.generateData();
-            args.Add(id.ToString());
         }
     }
 }

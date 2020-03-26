@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 using System.ComponentModel.Design;
-using System.Web.Mvc;
 using PostSharp.Serialization;
 using PostSharp.Aspects;
 using PostSharp.Aspects.Configuration;
@@ -33,20 +32,20 @@ namespace Networking
         }
 
         private static readonly Dictionary<string, MethodInfo> methods = new Dictionary<string, MethodInfo>();
-        internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
+        internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
         internal static event networkingInvokeEvent onNetworkingInvoke;
         public NetworkInterface networkInterface = NetworkInterface.TCP;
         public bool shouldInvokeInServer = true;
         public bool shouldInvokeSynchronously = false;
         protected bool shouldInvokeImmediatelyIfHasAuthority = true;
-        private PacketID packetID;
+        private PacketId packetID;
 
-        internal MethodNetworkAttribute(PacketID packetID)
+        internal MethodNetworkAttribute(PacketId packetID)
         {
             this.packetID = packetID;
         }
 
-        public override sealed void OnInvoke(MethodInterceptionArgs args)
+        public override sealed void OnInvoke(MethodInterceptionArgs args) //TODO: Remove static usage and use as instance instead
         {
             if (!(args.Instance as NetworkIdentity).hasInitialized)
             {
@@ -93,30 +92,29 @@ namespace Networking
             methods.Add(method.ReflectedType.Name + method.Name, new MethodInfo(method, shouldInvokeSynchronously));
         }
 
-        internal static void networkInvoke(NetworkIdentity net, object[] args)
+        internal static void NetworkInvoke(NetworkIdentity net, MethodPacket packet)
         {
             MethodInfo methodInfo;
-            string methodName = args[0].ToString();
-            List<object> temp = args.ToList();
-            temp.RemoveAt(0);
-            temp.RemoveAt(temp.Count - 1);//Remove shouldInvokeInServer
-            args = temp.ToArray();
             Type t = net.GetType();
-            while (!methods.TryGetValue(t.Name + methodName, out methodInfo))
+            while (!methods.TryGetValue(t.Name + packet.MethodName, out methodInfo))
             {
                 t = t.BaseType;
             }
-            
-            object[] newArgs = null;
-            if (args.Length != 0 && (string)args[0] != "")
+
+            int i = 0;
+            foreach (ParameterInfo item in methodInfo.Method.GetParameters())
             {
-                newArgs = new object[args.Length];
-                int i = 0;
-                foreach (ParameterInfo item in methodInfo.Method.GetParameters())
+                var v = packet.MethodArgs[i];
+                if (typeof(NetworkIdentity).IsAssignableFrom(item.ParameterType))
                 {
-                    newArgs[i] = Operations.getValueAsObject(item.ParameterType.Name, args[i]);
-                    i++;
+                    v = NetworkIdentity.entities[int.Parse(v + "")];
                 }
+                else
+                {
+                    v = Convert.ChangeType(v, methodInfo.Method.GetParameters().ToArray()[i].ParameterType);
+                }
+                packet.MethodArgs[i] = v;
+                i++;
             }
 
             if (methodInfo.ShouldInvokeSynchronously)
@@ -128,7 +126,7 @@ namespace Networking
                         lock (NetworkIdentity.scope)
                         {
                             NetworkIdentity.interrupt = false;
-                            methodInfo.Method.Invoke(net, newArgs);
+                            methodInfo.Method.Invoke(net, packet.MethodArgs.ToArray());
                         }
                     });
                 }
@@ -138,7 +136,7 @@ namespace Networking
                 lock (NetworkIdentity.scope)
                 {
                     NetworkIdentity.interrupt = false;
-                    methodInfo.Method.Invoke(net, newArgs);
+                    methodInfo.Method.Invoke(net, packet.MethodArgs.ToArray());
                 }
             }
 

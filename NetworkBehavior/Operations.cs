@@ -8,7 +8,7 @@ namespace Networking
 {
     class Operations
     {
-        public static object getValueAsObject(string typeName, object value)
+        public static object getValueAsObject(string typeName, object value)//TODO: Remove
         {
             object newArgs;
             switch (typeName)

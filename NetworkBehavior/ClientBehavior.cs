@@ -44,34 +44,34 @@ namespace Networking
             }
         }
 
-        protected override void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, params string[] valuesByFields)
+        protected override void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, params object[] valuesByFields)
         {
             identity.isInServer = false;
             base.InitIdentityLocally(identity, ownerID, id, valuesByFields);
         }
 
-        internal void Send(Packet packet, NetworkInterface networkInterface, params int[] ports)
+        internal void Send(Packet packet, NetworkInterface networkInterface)
         {
             if (networkInterface == NetworkInterface.TCP)
             {
-                client.Send(packet.args.ToArray());
+                client.Send(packet.Data.ToArray());
             }
             else
             {
-                directClient.Send((int)packet.packetID, packet.args.ToArray());
+                directClient.Send(packet.Data.ToArray());
             }
         }
 
-        protected override void ParsePacketByPacketID(int packetID, string[] args, string ip, int port, NetworkInterface networkInterface, string[] originArgs)
+        private protected override void ParsePacket(PacketId packetId, object[] args, SocketInfo socketInfo) 
         {
-            switch (packetID)
+            switch (packetId)
             {
-                case (int)PacketID.InitiateDircetInterface:
-                    DircetInterfaceInitiatingPacket packet = new DircetInterfaceInitiatingPacket(id);
-                    Send(packet, NetworkInterface.UDP);
+                case PacketId.InitiateDircetInterface:
+                    DircetInterfaceInitiatingPacket initiatingPacket = new DircetInterfaceInitiatingPacket(id);
+                    Send(initiatingPacket, NetworkInterface.UDP);
                     break;
                 default:
-                    base.ParsePacketByPacketID(packetID, args, ip, port, networkInterface, originArgs);
+                    base.ParsePacket(packetId, args, socketInfo);
                     break;
             }
         }
@@ -87,13 +87,13 @@ namespace Networking
             OnServerDisconnected?.Invoke();
         }
 
-        private void Client_receivedEvent(string[][] data, string ip, int port)
+        private void Client_receivedEvent(object[][] data, string ip, int port)
         {
             foreach (string[] s in data)
             {
                 try
                 {
-                    ParsePacket(s, ip, port, NetworkInterface.TCP);
+                    ParseArgs(s, new SocketInfo(ip, port, NetworkInterface.TCP));
                 }
                 catch (Exception e)
                 {
@@ -104,7 +104,7 @@ namespace Networking
             }
         }
 
-        protected override void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
+        protected override void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
             if (!IsConnected)
             {
@@ -113,7 +113,7 @@ namespace Networking
             SyncVarPacket packet;
             switch (packetID)
             {
-                case PacketID.SyncVar:
+                case PacketId.SyncVar:
                     packet = new SyncVarPacket(args, invokeInServer, networkIdentity.id);
                     Send(packet, networkInterface);
                     break;
@@ -122,7 +122,7 @@ namespace Networking
             }
         }
 
-        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
+        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
             if (!IsConnected)
             {
@@ -131,11 +131,11 @@ namespace Networking
             MethodPacket packet;
             switch (packetID)
             {
-                case PacketID.BroadcastMethod:
-                    packet = new BroadcastMethodPacket(args, invokeInServer, networkIdentity.id);
+                case PacketId.BroadcastMethod:
+                    packet = new BroadcastPacket(networkIdentity.id, args, invokeInServer);
                     Send(packet, networkInterface);
                     break;
-                case PacketID.Command:
+                case PacketId.Command:
                     packet = new CommandPacket(args, networkIdentity.id);
                     Send(packet, networkInterface);
                     break;

@@ -8,14 +8,12 @@ namespace Networking
 {
     internal class BeginSynchronizationPacket : Packet
     {
-        public BeginSynchronizationPacket() : base(PacketID.BeginSynchronization)
+        public BeginSynchronizationPacket() : base(PacketId.BeginSynchronization)
         {
-            generateData();
         }
 
-        protected override void generateData()
+        public BeginSynchronizationPacket(List<object> args) : base(PacketId.BeginSynchronization, args)
         {
-            base.generateData();
         }
     }
 }

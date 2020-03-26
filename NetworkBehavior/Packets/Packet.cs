@@ -9,21 +9,20 @@ namespace Networking
 {
     internal abstract class Packet
     {
-        public readonly PacketID packetID;
-        public readonly List<string> args = new List<string>();
-        public Packet(PacketID packetID)
+        public PacketId PacketId { get; set; }
+
+        public List<object> Data { get; } = new List<object>();
+
+        public Packet(PacketId packetId)
         {
-            this.packetID = packetID;
+            PacketId = packetId;
+            Data.Add((int) PacketId);
         }
 
-        protected virtual void generateData()
+        public Packet(PacketId packetId, List<object> args) : this(packetId)
         {
-            args.Add(((int)packetID).ToString());
-        }
-
-        internal List<string> GetArgs()
-        {
-            return new List<string>(args);
+            Data = new List<object>(args);
+            args.RemoveAt(0);
         }
     }
 }

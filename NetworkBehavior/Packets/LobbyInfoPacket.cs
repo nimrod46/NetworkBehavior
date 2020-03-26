@@ -8,17 +8,18 @@ namespace Networking
 {
     internal class LobbyInfoPacket : Packet
     {
-        public string info;
-        public LobbyInfoPacket(string info) : base(PacketID.LobbyInfo)
+        public string Info { get; private set; }
+
+        public LobbyInfoPacket(string info) : base(PacketId.LobbyInfo)
         {
-            this.info = info;
-            generateData();
+            Info = info;
+            Data.Add(Info);
         }
 
-        protected override void generateData()
+        public LobbyInfoPacket(List<object> args) : base(PacketId.LobbyInfo, args)
         {
-            base.generateData();
-            args.Add(info);
+            Info = args[0].ToString();
+            args.RemoveAt(0);
         }
     }
 }

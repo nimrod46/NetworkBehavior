@@ -7,11 +7,14 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    internal class InitiateDircetInterface : Packet
+    internal class InitiateDircetInterfacePacket : Packet
     {
-        public InitiateDircetInterface() : base(PacketID.InitiateDircetInterface)
+        public InitiateDircetInterfacePacket() : base(PacketId.InitiateDircetInterface)
         {
-            generateData();
+        }
+
+        public InitiateDircetInterfacePacket(List<object> args) : base(PacketId.InitiateDircetInterface, args)
+        {
         }
     }
 }

@@ -7,32 +7,35 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    internal class SyncVarPacket : Packet
+    internal class SyncVarPacket : NetworkIdentityBasePacket
     {
-        protected LocationInterceptionArgs locationArg;
-        protected int id;
-        protected bool invokeInServer;
-        internal SyncVarPacket(LocationInterceptionArgs locationArg, bool invokeInServer, int id) : base (PacketID.SyncVar)
+        public string LocationName { get; private set; }
+        public string LocationValue { get; private set; }
+        public bool ShouldInvokeInServer { get; private set; }
+
+        internal SyncVarPacket(LocationInterceptionArgs locationArg, bool shouldInvokeInServer, int networkIdentityId) : base (PacketId.SyncVar, networkIdentityId)
         {
-            this.locationArg = locationArg;
-            this.id = id;
-            this.invokeInServer = invokeInServer;
-            generateData();
+            LocationName = locationArg.Location.Name;
+            if (locationArg.Value is NetworkIdentity)
+            {
+                LocationValue = ((locationArg.Value as NetworkIdentity).id.ToString());
+            }
+            else
+            {
+                LocationValue = locationArg.Value.ToString();
+            }
+            ShouldInvokeInServer = shouldInvokeInServer;
+            Data.Add(LocationName);
+            Data.Add(LocationValue);
+            Data.Add(ShouldInvokeInServer);
         }
 
-        protected override void generateData()
+        internal SyncVarPacket(List<object> args) : base(PacketId.SyncVar, args)
         {
-            base.generateData();
-            args.Add(locationArg.Location.Name);
-            if(locationArg.Value is NetworkIdentity)
-            {
-                args.Add((locationArg.Value as NetworkIdentity).id.ToString());
-            }else 
-            {
-                args.Add(locationArg.Value.ToString());
-            }
-            args.Add(invokeInServer.ToString());
-            args.Add(id.ToString());
+            LocationName = args[0].ToString();
+            LocationValue = args[1].ToString();
+            ShouldInvokeInServer = Convert.ToBoolean(args[2]);
+            args.RemoveRange(0, 3);
         }
     }
 }

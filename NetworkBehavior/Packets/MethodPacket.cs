@@ -7,43 +7,50 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    internal abstract class MethodPacket : Packet
+    internal abstract class MethodPacket : NetworkIdentityBasePacket
     {
-        protected MethodInterceptionArgs methodArgs;
-        protected bool invokeInServer;
-        protected int id;
-        public MethodPacket (MethodInterceptionArgs methodArgs, bool invokeInServer, PacketID packetId, int id) : base(packetId)
-        {
-            this.methodArgs = methodArgs;
-            this.invokeInServer = invokeInServer;
-            this.id = id;
-            generateData();
-        }
+        
+        public string MethodName { get; private set; }
+        public int MethodArgsCount { get; private set; }
+        public List<object> MethodArgs { get; private set; } = new List<object>();
+        public bool ShouldInvokeInServer { get; private set; }
 
-        protected override void generateData()
+        public MethodPacket(PacketId packetId, int id, MethodInterceptionArgs methodArgs, bool shouldInvokeInServer) : base(packetId, id)
         {
-            base.generateData();
+            MethodName = methodArgs.Method.Name;
             if (methodArgs.Arguments.Count != 0)
             {
                 foreach (object o in methodArgs.Arguments)
                 {
                     if (o == null)
                     {
-                        args.Add("null");
+                       MethodArgs.Add("null");
                     }
                     else if (o is NetworkIdentity)
                     {
-                        args.Add((o as NetworkIdentity).id.ToString());
+                        MethodArgs.Add((o as NetworkIdentity).id.ToString());
                     }
                     else
                     {
-                        args.Add(o.ToString());
+                        MethodArgs.Add(o.ToString());
                     }
                 }
             }
-            args.Insert(1, methodArgs.Method.Name);
-            args.Add(invokeInServer.ToString());
-            args.Add(id.ToString());
+            MethodArgsCount = MethodArgs.Count;
+            ShouldInvokeInServer = shouldInvokeInServer;
+            Data.Add(MethodName); 
+            Data.Add(MethodArgsCount);
+            if (MethodArgs != null) Data.AddRange(MethodArgs) ;
+            Data.Add(ShouldInvokeInServer);
+        }
+
+        public MethodPacket(PacketId packetId, List<object> args) : base(packetId, args)
+        {
+            MethodName = args[0].ToString();
+            MethodArgsCount = Convert.ToInt32(args[1]);
+            MethodArgs = args.GetRange(2, MethodArgsCount);
+            ShouldInvokeInServer = Convert.ToBoolean(args[MethodArgsCount + 2]);
+            args.RemoveRange(0, 1 + MethodArgsCount);
         }
     }
 }

@@ -7,11 +7,15 @@ using System.Threading.Tasks;
 
 namespace Networking
 {
-    internal class BroadcastMethodPacket : MethodPacket
+    internal class BroadcastPacket : MethodPacket
     {
-        public BroadcastMethodPacket(MethodInterceptionArgs args, bool invokeInServer, int id) : base (args, invokeInServer, PacketID.BroadcastMethod, id)
+        public BroadcastPacket(int id, MethodInterceptionArgs args, bool invokeInServer) : base(PacketId.BroadcastMethod, id, args, invokeInServer)
         {
 
+        }
+
+        public BroadcastPacket(List<object> args) : base(PacketId.BroadcastMethod, args)
+        {
         }
     }
 }

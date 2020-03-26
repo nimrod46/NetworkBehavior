@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -9,9 +10,11 @@ using System.Threading.Tasks;
 namespace Networking
 {
     
-    public class NetworkIdentity
+    public class NetworkIdentity : IComparable<NetworkIdentity>
     {
-        public static Dictionary<int, NetworkIdentity> entities = new Dictionary<int, NetworkIdentity>();
+        
+        public static SortedList<int, NetworkIdentity> entities = new SortedList<int, NetworkIdentity>();
+        internal static List<Type> prioritiesIdintities = new List<Type>();
         internal static readonly char packetSpiltter = '¥';
         internal static readonly char argsSplitter = '|';
         internal static bool interrupt = true;
@@ -35,12 +38,14 @@ namespace Networking
         public bool hasFieldsBeenInitialized = false;
         public int id;
         public int ownerId;
+        internal bool isUsedAsVar;
         public NetworkIdentity()
         {
             if (!NetworkBehavior.classes.ContainsKey(GetType().FullName))
             {
                 NetworkBehavior.classes.Add(GetType().FullName, GetType());
             }
+            isUsedAsVar = prioritiesIdintities.Any(t => t.IsAssignableFrom(GetType()));
         }
 
         internal void PreformEvents()
@@ -99,6 +104,19 @@ namespace Networking
                     throw new Exception("Invalid owner id was given");
                 }
             }
+        }
+
+        public int CompareTo(NetworkIdentity other)
+        {
+            if(isUsedAsVar == other.isUsedAsVar)
+            {
+                return 0;
+            }
+            else if(isUsedAsVar)
+            {
+                return -1;
+            }
+            return 1;
         }
     }
 }

@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 using System.ComponentModel.Design;
-using System.Web.Mvc;
 using PostSharp.Serialization;
 using PostSharp.Aspects;
 using PostSharp.Aspects.Configuration;
@@ -19,7 +18,7 @@ namespace Networking
     [PSerializable]
     public class BroadcastMethod : MethodNetworkAttribute
     {
-        public BroadcastMethod() : base(PacketID.BroadcastMethod)
+        public BroadcastMethod() : base(PacketId.BroadcastMethod)
         {
 
         }

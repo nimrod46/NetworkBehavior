@@ -30,7 +30,7 @@ namespace Networking
             }
         }
 
-        internal delegate void networkingInvokeEvent(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity id);
+        internal delegate void networkingInvokeEvent(LocationInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity id);
         internal static event networkingInvokeEvent onNetworkingInvoke;
         private static Dictionary<string, VarInfo> fields = new Dictionary<string, VarInfo>();
         public NetworkInterface networkInterface = NetworkInterface.TCP;
@@ -38,7 +38,7 @@ namespace Networking
         public bool isDisabled = false;
         public bool invokeInServer = true;
         public bool shouldInvokeSynchronously = false;
-        private PacketID packetID = PacketID.SyncVar;
+        private PacketId packetID = PacketId.SyncVar;
         private MethodInfo hookedMethod;
 
         public override void OnSetValue(LocationInterceptionArgs args)
@@ -84,27 +84,27 @@ namespace Networking
                 throw new Exception("SyncVar: Duplicate fields name: " + locationInfo.Name);
             }
             fields.Add(locationInfo.DeclaringType.Name + locationInfo.Name, new VarInfo(locationInfo, shouldInvokeSynchronously));
+            if (typeof(NetworkIdentity).IsAssignableFrom(locationInfo.LocationType))
+            {
+                NetworkIdentity.prioritiesIdintities.Add(locationInfo.LocationType);
+            }
             if (hook != "")
             {
-                // hooks.Add(locationInfo.DeclaringType.Name + locationInfo.Name, locationInfo.DeclaringType.GetMethod(hook, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public));
                 hookedMethod = locationInfo.DeclaringType.GetMethod(hook, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             }
         }
 
-        internal static void networkInvoke(NetworkIdentity net, object[] args)
+        internal static void NetworkInvoke(NetworkIdentity net, SyncVarPacket packet)//TODO: Remove static usage and use as instance instead
         {
-            string fieldName = args[0].ToString();
-            List<object> temp = args.ToList();
-            temp.RemoveAt(0);
-            args = temp.ToArray();
             VarInfo field;
             Type t = net.GetType();
-            while (!fields.TryGetValue(t.Name + fieldName, out field))
+            while (!fields.TryGetValue(t.Name + packet.LocationName, out field))
             {
                 t = t.BaseType;
             }
 
-            object newArg = Operations.getValueAsObject(field.LocationInfo.LocationType.Name, args[0]);
+            object newArg = Operations.getValueAsObject(field.LocationInfo.LocationType.Name, packet.LocationValue);//TODO: Remove and use Convert instead
+
             if (field.ShouldInvokeSynchronously)
             {
                 lock (NetworkBehavior.synchronousActions)

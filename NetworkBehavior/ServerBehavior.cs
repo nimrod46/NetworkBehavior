@@ -10,7 +10,7 @@ using PostSharp.Aspects;
 
 namespace Networking
 {
-    public class ServerBehavior : Networking.NetworkBehavior
+    public class ServerBehavior : NetworkBehavior
     {
         private readonly object syncObj = new object();
         public delegate void ConnectionLobbyAcceptedEventHandler(string ip, int port, long ping);
@@ -55,7 +55,76 @@ namespace Networking
             server.OnClientDisconnectedEvent += Server_OnClientDisconnectedEvent;
         }
 
-        protected override void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, params string[] valuesByFields)
+        private void Server_receivedEvent(object[][] data, string ip, int port)
+        {
+            foreach (string[] s in data)
+            {
+                try
+                {
+                    ParseArgs(s, new SocketInfo(ip, port, NetworkInterface.TCP));
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Cannot parse packet: ");
+                    print(s);
+                    Console.WriteLine(e);
+                }
+            }
+        }
+
+        private protected override void ParsePacket(PacketId packetId, object[] args, SocketInfo socketInfo)
+        {
+            switch (packetId)
+            {
+                case PacketId.DircetInterfaceInitiating:
+                    DircetInterfaceInitiatingPacket initiatingPacket = new DircetInterfaceInitiatingPacket(args.ToList());
+                    EndPoint eP;
+                    int clientId = initiatingPacket.NetworkIdentityId;
+                    if (clients.TryGetValue(clientId, out eP))
+                    {
+                        eP.UdpPort = socketInfo.Port;
+                        clients[clientId] = eP;
+                    }
+                    else
+                    {
+                        PrintWarning("UDP NOT init for: " + clientId);
+                    }
+                    clientsBeforeSync.Remove(clientId);
+                    OnClientEventHandlerSynchronizedEvent?.Invoke(clientId);
+                    break;
+                case PacketId.BeginSynchronization:
+                    Synchronize(socketInfo.Ip, socketInfo.Port);
+                    break;
+                default:
+                    base.ParsePacket(packetId, args, socketInfo);
+                    break;
+            }
+        }
+
+        private protected override void ParseBroadcastPacket(BroadcastPacket broadcastPacket, SocketInfo socketInfo)
+        {
+            BroadcastPacket(broadcastPacket, socketInfo);
+            if (broadcastPacket.ShouldInvokeInServer)
+            {
+                base.ParseBroadcastPacket(broadcastPacket, socketInfo);
+            }
+        }
+
+        private protected override void ParseSyncVarPacket(SyncVarPacket syncVarPacket, SocketInfo socketInfo)
+        {
+            BroadcastPacket(syncVarPacket, socketInfo);
+            if (syncVarPacket.ShouldInvokeInServer)
+            {
+                base.ParseSyncVarPacket(syncVarPacket, socketInfo);
+            }
+        }
+
+        private void BroadcastPacket(Packet packet, SocketInfo socketInfo)
+        {
+            BroadcastPacket(packet, socketInfo.NetworkInterface, clientsBeforeSync.Concat(new int[] { GetIdByIpAndPort(socketInfo.Ip, socketInfo.Port) }).ToArray());
+        }
+
+        protected override void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, params object[] valuesByFields)
         {
             identity.isInServer = true;
             base.InitIdentityLocally(identity, ownerID, id, valuesByFields);
@@ -67,140 +136,79 @@ namespace Networking
             {
                 Console.WriteLine("New player at: " + GetIdByIpAndPort(ip, port));
                 SpawnObjectPacket spawnPacket;
-                foreach (NetworkIdentity i in NetworkIdentity.entities.Values.Reverse())
+                List<NetworkIdentity> identities = NetworkIdentity.entities.Values.ToList();
+                identities.Sort();
+                foreach (NetworkIdentity i in identities)
                 {
                     Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(i);
                     var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
                     spawnPacket = new SpawnObjectPacket(getNetworkClassTypeByName(i.GetType().FullName), i.id, i.ownerId, args); //Spawn all existing clients in the remote client
-                    SendToAUser(spawnPacket, NetworkInterface.TCP, ip, port);
+                    SendPacketToAUser(spawnPacket, NetworkInterface.TCP, ip, port);
                 }
                 int clientId = GetIdByIpAndPort(ip, port);
                 clients.Add(clientId, new EndPoint(ip, port));
                 //Console.WriteLine("Spawn all existing clients");
 
-                InitiateDircetInterface initiateDircetInterface = new InitiateDircetInterface();//Initiate dircet interface with the client
-                SendToAUser(initiateDircetInterface, NetworkInterface.TCP, ip, port);
-                //Console.WriteLine("Initiated dircet interface with the client");
-
-                clientsBeforeSync.Remove(clientId);
-                OnClientEventHandlerSynchronizedEvent?.Invoke(clientId);
+                InitiateDircetInterfacePacket initiateDircetInterface = new InitiateDircetInterfacePacket();//Initiate dircet interface with the client
+                SendPacketToAUser(initiateDircetInterface, NetworkInterface.TCP, ip, port);
+                //Console.WriteLine("Initiating dircet interface with the client");             
             }
         }
 
-        protected override void ParsePacketByPacketID(int packetID, string[] args, string ip, int port, NetworkInterface networkInterface, string[] originArgs)
+        internal void DirectBroadcast(object[] args, params int[] clientsId)
         {
-            switch (packetID)
+            foreach (var client in clients)
             {
-                case (int)PacketID.DircetInterfaceInitiating:
-                    EndPoint eP;
-                    int clientId = int.Parse(args[0]);
-                    if (clients.TryGetValue(clientId, out eP))
-                    {
-                        eP.UdpPort = port;
-                        clients[clientId] = eP;
-                    }
-                    else
-                    {
-                        Console.Error.WriteLine("UDP NOT init for: " + clientId);
-                    }
-                    break;
-                case (int)PacketID.BroadcastMethod:
-                    if (networkInterface == NetworkInterface.TCP)
-                    {
-                        server.Broadcast(originArgs,  clientsBeforeSync.Concat(new int[] { port }).ToArray());
-                    }
-                    else
-                    {
-                        directBroadcast(originArgs, clientsBeforeSync.Concat(new int[] { port }).ToArray());
-                    }
-
-                    if (!bool.Parse(args[args.Length - 2]))
-                    {
-                        return;
-                    }
-                    base.ParsePacketByPacketID(packetID, args, ip, port, networkInterface, originArgs);
-                    break;
-                case (int)PacketID.SyncVar:
-                    if (networkInterface == NetworkInterface.TCP)
-                    {
-                        server.Broadcast(originArgs, clientsBeforeSync.Concat(new int[] { port }).ToArray());
-                    }
-                    else
-                    {
-                        directBroadcast(originArgs, clientsBeforeSync.Concat(new int[] { port }).ToArray());
-                    }
-
-                    if (!bool.Parse(args[args.Length - 2]))
-                    {
-                        return;
-                    }
-                    base.ParsePacketByPacketID(packetID, args, ip, port, networkInterface, originArgs);
-                    break;
-                case (int)PacketID.BeginSynchronization:
-                    Synchronize(ip, port);
-                    break;
-                default:
-                    base.ParsePacketByPacketID(packetID, args, ip, port, networkInterface, originArgs);
-                    break;
-            }
-        }
-
-        internal void directBroadcast(string[] args, params int[] ports)
-        {
-            foreach (EndPoint endPoint in clients.Values)
-            {
-                if (endPoint.UdpPort == 0 || ports.Contains(endPoint.UdpPort))
+                if ( clientsId.Contains(client.Key))
                 {
                     continue;
                 }
-                directServer.Send(args, endPoint.Ip, endPoint.UdpPort);
+                if(client.Value.UdpPort == 0)
+                {
+                    PrintWarning("cannot send packet as UDP for client: " + client.Key);
+                    continue;
+                }
+                directServer.Send(args, client.Value.Ip, client.Value.UdpPort);
             }
         }
 
-        internal void Send(Packet packet, NetworkInterface networkInterface, params int[] ports)
+        internal void BroadcastPacket(Packet packet, NetworkInterface networkInterface, params int[] clientsId)
+        {
+            Broadcast(packet.Data.ToArray(), networkInterface, clientsId);
+        }
+
+        internal void Broadcast(object[] args, NetworkInterface networkInterface, params int[] clientsId)
         {
             if (networkInterface == NetworkInterface.TCP)
             {
-                server.Broadcast(packet.args.ToArray(), ports);
+                server.Broadcast(args, clientsId);
             }
             else
             {
-                directBroadcast(packet.args.ToArray(), ports);
+                DirectBroadcast(args, clientsId);
             }
         }
 
-        internal void SendToAUser(Packet packet, NetworkInterface networkInterface, string ip, int port)
+        internal void SendPacketToAUser(Packet packet, NetworkInterface networkInterface, string ip, int port)
+        {
+            SendToAUser(packet.Data.ToArray(), networkInterface, ip, port);
+        }
+
+        internal void SendToAUser(object[] args, NetworkInterface networkInterface, string ip, int port)
         {
             if (networkInterface == NetworkInterface.TCP)
             {
-                server.SendToAUser(packet.args.ToArray(), ip, port);
+                server.SendToAUser(args, ip, port);
             }
             else
             {
-                directServer.Send(packet.args.ToArray(), clients[GetIdByIpAndPort(ip, port)].Ip, clients[GetIdByIpAndPort(ip, port)].UdpPort);
-            }
-        }
-
-        private void Server_receivedEvent(string[][] data, string ip, int port)
-        {
-            foreach (string[] s in data)
-            {
-                try
-                {
-                    ParsePacket(s, ip, port, NetworkInterface.TCP);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("Cannot parse packet: ");
-                    print(s);
-                    Console.WriteLine(e);
-                }
+                directServer.Send(args, clients[GetIdByIpAndPort(ip, port)].Ip, clients[GetIdByIpAndPort(ip, port)].UdpPort);
             }
         }
 
         private void Server_OnClientDisconnectedEvent(string ip, int port)
         {
-            clientDsiconnected(GetIdByIpAndPort(ip, port));
+            ClientDsiconnected(GetIdByIpAndPort(ip, port));
         }
 
         private void Server_OnConnectionLobbyAcceptedEvent(string ip, int port, long ping)
@@ -213,7 +221,7 @@ namespace Networking
             clientsBeforeSync.Add(GetIdByIpAndPort(ip, port));
         }
 
-        protected override void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
+        protected override void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
             if (!IsRunning)
             {
@@ -223,16 +231,16 @@ namespace Networking
             SyncVarPacket packet;
             switch (packetID)
             {
-                case PacketID.SyncVar:
+                case PacketId.SyncVar:
                     packet = new SyncVarPacket(args, invokeInServer, networkIdentity.id);
-                    Send(packet, networkInterface, clientsBeforeSync.ToArray());
+                    BroadcastPacket(packet, networkInterface, clientsBeforeSync.ToArray());
                     break;
                 default:
                     break;
             }
         }
 
-        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketID packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
+        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
         {
             if (!IsRunning)
             {
@@ -241,20 +249,20 @@ namespace Networking
             MethodPacket packet;
             switch (packetID)
             {
-                case PacketID.BroadcastMethod:
-                    packet = new BroadcastMethodPacket(args, invokeInServer, networkIdentity.id);
-                    Send(packet, networkInterface, clientsBeforeSync.ToArray());
+                case PacketId.BroadcastMethod:
+                    packet = new BroadcastPacket(networkIdentity.id, args, invokeInServer);
+                    BroadcastPacket(packet, networkInterface, clientsBeforeSync.ToArray());
                     break;
-                case PacketID.Command:
+                case PacketId.Command:
                     packet = new CommandPacket(args, networkIdentity.id);
-                    SendToAUser(packet, networkInterface, clients[networkIdentity.ownerId].Ip, clients[networkIdentity.ownerId].TcpPort);
+                    SendPacketToAUser(packet, networkInterface, clients[networkIdentity.ownerId].Ip, clients[networkIdentity.ownerId].TcpPort);
                     break;
                 default:
                     break;
             }
         }
 
-        public void sendLobbyInfo(string ip, int port, string data)
+        public void SendLobbyInfo(string ip, int port, string data)
         {
             if (!IsRunning)
             {
@@ -262,10 +270,10 @@ namespace Networking
             }
 
             LobbyInfoPacket packet = new LobbyInfoPacket(data);
-            Send(packet, NetworkInterface.TCP, GetIdByIpAndPort(ip, port));
+            BroadcastPacket(packet, NetworkInterface.TCP, GetIdByIpAndPort(ip, port));
         }
 
-        private void clientDsiconnected(int id)
+        private void ClientDsiconnected(int id)
         {
             Console.WriteLine("Client: " + id + " DISCONNECTED");
             lock (NetworkIdentity.entities)
@@ -325,7 +333,7 @@ namespace Networking
                 owner = clientId;
             }
             SpawnObjectPacket packet = new SpawnObjectPacket(instance, id, owner, args);
-            Send(packet, NetworkInterface.TCP, clientsBeforeSync.ToArray());
+            BroadcastPacket(packet, NetworkInterface.TCP, clientsBeforeSync.ToArray());
             InitIdentityLocally(identity, owner, id, args);
             return identity;
         }
