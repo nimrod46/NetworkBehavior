@@ -17,8 +17,6 @@ namespace Networking
         internal static List<Type> prioritiesIdintities = new List<Type>();
         internal static readonly char packetSpiltter = '¥';
         internal static readonly char argsSplitter = '|';
-        internal static bool interrupt = true;
-        internal static object scope = new object();
         internal static int lastId = 0;
 
         public delegate void NetworkInitialize();

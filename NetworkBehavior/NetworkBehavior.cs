@@ -77,13 +77,14 @@ namespace Networking
 
         public void Start()
         {
-            MethodNetworkAttribute.onNetworkingInvoke += MethodNetworkAttribute_onNetworkingInvoke;
-            SyncVar.onNetworkingInvoke += SyncVar_onNetworkingInvoke;
+            MethodNetworkAttribute.OnInvokeMethodNetworkly += OnInvokeMethodNetworkly;
+            SyncVar.OnInvokeLocationNetworkly += OnInvokeLocationNetworkly;
         }
-        protected abstract void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
 
-        protected abstract void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
-       
+        protected abstract void OnInvokeLocationNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string locationName, object locationValue);
+
+        protected abstract void OnInvokeMethodNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string memberName, object[] methodArgs);
+
         protected virtual void ReceivedEvent(object[] args, string ip, int port)
         {
             try
@@ -116,11 +117,6 @@ namespace Networking
                     LobbyInfoPacket lobbyInfoPacket = new LobbyInfoPacket(args.ToList());
                     ParseLobbyInfoPacket(lobbyInfoPacket, socketInfo);
                     break;
-                //case PacketId.InitiateDircetInterface:
-                //    break;
-                //case PacketId.DircetInterfaceInitiating:
-                //    packet = new DircetInterfaceInitiatingPacket(ref args);
-                //    break;
                 case PacketId.BroadcastMethod:
                     BroadcastPacket broadcastPacket = new BroadcastPacket(args.ToList());
                     ParseBroadcastPacket(broadcastPacket, socketInfo);
@@ -137,9 +133,6 @@ namespace Networking
                     SpawnObjectPacket spawnObjectPacket = new SpawnObjectPacket(args.ToList());
                     ParseSpawnObjectPacket(spawnObjectPacket, socketInfo);
                     break;
-                //case PacketId.BeginSynchronization:
-                //    packet = new BeginSynchronizationPacket(ref args);
-                //    break;
                 default:
                     throw new Exception("Invalid packet recived, id: " + args[0]);
             }
@@ -173,6 +166,7 @@ namespace Networking
 
         private protected virtual void ParseBroadcastPacket(BroadcastPacket broadcastPacket, SocketInfo socketInfo)
         {
+            Console.WriteLine(broadcastPacket.MethodName);
             ParseMethodPacket(broadcastPacket, socketInfo);
         }
 

@@ -9,7 +9,7 @@ namespace Networking
 {
     internal class CommandPacket : MethodPacket
     {
-        public CommandPacket(MethodInterceptionArgs args, int id) : base(PacketId.Command, id, args, true)
+        public CommandPacket(int id, string methodName, object[] methodArgs) : base(PacketId.Command, id, methodName, methodArgs)
         {
 
         }

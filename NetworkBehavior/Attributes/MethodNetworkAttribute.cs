@@ -19,127 +19,88 @@ namespace Networking
     [PSerializable]
     public abstract class MethodNetworkAttribute : MethodInterceptionAspect
     {
-        private struct MethodInfo
-        {
-            public MethodBase Method { get; set; }
-            public bool ShouldInvokeSynchronously { get; set; }
+        internal delegate void InvokeNetworklyEvent(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string methodName, object[] methodArgs);
+        internal static event InvokeNetworklyEvent OnInvokeMethodNetworkly;
 
-            public MethodInfo(MethodBase method, bool shouldInvokeSynchronously)
-            {
-                Method = method;
-                ShouldInvokeSynchronously = shouldInvokeSynchronously;
-            }
-        }
-
-        private static readonly Dictionary<string, MethodInfo> methods = new Dictionary<string, MethodInfo>();
-        internal delegate void networkingInvokeEvent(MethodInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity);
-        internal static event networkingInvokeEvent onNetworkingInvoke;
         public NetworkInterface networkInterface = NetworkInterface.TCP;
-        public bool shouldInvokeInServer = true;
         public bool shouldInvokeSynchronously = false;
-        protected bool shouldInvokeImmediatelyIfHasAuthority = true;
-        private PacketId packetID;
+        private PacketId packetId;
+        private bool shouldInvokeFromLocaly;
+        private NetworkMemberExecuter<MethodNetworkAttribute> networkExecuter;
+        private MethodBase method;
+        private string methodName;
 
-        internal MethodNetworkAttribute(PacketId packetID)
+        public MethodNetworkAttribute(PacketId packetId, bool shouldInvokeFromLocaly)
         {
-            this.packetID = packetID;
+            this.packetId = packetId;
+            this.shouldInvokeFromLocaly = shouldInvokeFromLocaly;
         }
 
-        public override sealed void OnInvoke(MethodInterceptionArgs args) //TODO: Remove static usage and use as instance instead
+        public override sealed void OnInvoke(MethodInterceptionArgs args) 
         {
-            if (!(args.Instance as NetworkIdentity).hasInitialized)
-            {
-                NetworkBehavior.PrintWarning("MethodNetworkAttribute was called on none initialized identity");
-                return;
-            }
-            
-            lock (NetworkIdentity.scope)
-            {
-                if (!NetworkIdentity.interrupt)
+            NetworkIdentity networkIdentity = args.Instance as NetworkIdentity;
+           
+            InvokeMethod(networkIdentity, () => {
+
+                base.OnInvoke(args);
+            }, () =>
+            { 
+                List<object> methodArgs = new List<object>();
+                foreach (object o in args.Arguments)
                 {
-                    NetworkIdentity.interrupt = true;
-                    base.OnInvoke(args);
-                    return;
-                }
-                else
-                {
-                    if (!(args.Instance as NetworkIdentity).hasAuthority && !(args.Instance as NetworkIdentity).isInServer)
+                    if (o == null)
                     {
-                        NetworkBehavior.PrintWarning(args.Method.Name + " was called on none authority identity");
-                        return;
+                        methodArgs.Add("null");
+                    }
+                    else if (o is NetworkIdentity)
+                    {
+                        methodArgs.Add((o as NetworkIdentity).id.ToString());
                     }
                     else
                     {
-                        onNetworkingInvoke?.Invoke(args, packetID, networkInterface, shouldInvokeInServer, args.Instance as NetworkIdentity);
+                        methodArgs.Add(o.ToString());
                     }
                 }
-            }
-
-            if (shouldInvokeImmediatelyIfHasAuthority)
-            {
-                base.OnInvoke(args);
-            }
+                OnInvokeMethodNetworkly.Invoke(packetId, networkIdentity, networkInterface, methodName, methodArgs.ToArray());
+            });
         }
-    
+
+        protected virtual void InvokeMethod(NetworkIdentity networkIdentity, Action invokeLocally, Action invokeNetworkly)
+        {
+            networkExecuter.InvokeMember(networkIdentity, invokeLocally, invokeNetworkly);
+        }
 
         public override void RuntimeInitialize(MethodBase method)
         {
             base.RuntimeInitialize(method);
-            if (methods.ContainsKey(method.ReflectedType.Name + method.Name))
-            {
-                throw new Exception("MethodNetworkAttribute: Duplicate method name: " + method.Name);
-            }
-            methods.Add(method.ReflectedType.Name + method.Name, new MethodInfo(method, shouldInvokeSynchronously));
+            this.method = method;
+            methodName = method.DeclaringType.Name + ":" + method.Name;
+            networkExecuter = new NetworkMemberExecuter<MethodNetworkAttribute>(methodName, this, shouldInvokeSynchronously, shouldInvokeFromLocaly, true);
         }
 
-        internal static void NetworkInvoke(NetworkIdentity net, MethodPacket packet)
+        protected virtual void InvokeMethodFromNetwork(NetworkIdentity networkIdentity, object[] methodArgs)
         {
-            MethodInfo methodInfo;
-            Type t = net.GetType();
-            while (!methods.TryGetValue(t.Name + packet.MethodName, out methodInfo))
-            {
-                t = t.BaseType;
-            }
-
             int i = 0;
-            foreach (ParameterInfo item in methodInfo.Method.GetParameters())
+            foreach (ParameterInfo item in method.GetParameters())
             {
-                var v = packet.MethodArgs[i];
+                var v = methodArgs[i];
                 if (typeof(NetworkIdentity).IsAssignableFrom(item.ParameterType))
                 {
                     v = NetworkIdentity.entities[int.Parse(v + "")];
                 }
                 else
                 {
-                    v = Convert.ChangeType(v, methodInfo.Method.GetParameters().ToArray()[i].ParameterType);
+                    v = Convert.ChangeType(v, item.ParameterType);
                 }
-                packet.MethodArgs[i] = v;
+                methodArgs[i] = v;
                 i++;
             }
+            networkExecuter.InvokeMemberFromNetwork(() => method.Invoke(networkIdentity, methodArgs));
+        }
 
-            if (methodInfo.ShouldInvokeSynchronously)
-            {
-                lock (NetworkBehavior.synchronousActions)
-                {
-                    NetworkBehavior.synchronousActions.Add(() =>
-                    {
-                        lock (NetworkIdentity.scope)
-                        {
-                            NetworkIdentity.interrupt = false;
-                            methodInfo.Method.Invoke(net, packet.MethodArgs.ToArray());
-                        }
-                    });
-                }
-            }
-            else
-            {
-                lock (NetworkIdentity.scope)
-                {
-                    NetworkIdentity.interrupt = false;
-                    methodInfo.Method.Invoke(net, packet.MethodArgs.ToArray());
-                }
-            }
-
+        internal static void NetworkInvoke(NetworkIdentity networkIdentity, MethodPacket packet)
+        {
+            NetworkMemberExecuter<MethodNetworkAttribute>.GetNetworkAttributeMemberByMemberName(packet.MethodName).InvokeMethodFromNetwork(networkIdentity, packet.MethodArgs);
         }
     }
 }

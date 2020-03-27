@@ -18,7 +18,7 @@ namespace Networking
     [PSerializable]
     public class BroadcastMethod : MethodNetworkAttribute
     {
-        public BroadcastMethod() : base(PacketId.BroadcastMethod)
+        public BroadcastMethod() : base(PacketId.BroadcastMethod, true)
         {
 
         }

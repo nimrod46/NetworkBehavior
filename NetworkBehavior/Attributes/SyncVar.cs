@@ -18,72 +18,55 @@ namespace Networking
     [PSerializable]
     public class SyncVar : LocationInterceptionAspect
     {
-        private struct VarInfo
-        {
-            public LocationInfo LocationInfo { get; set; }
-            public bool ShouldInvokeSynchronously { get; set; }
+        internal delegate void InvokeNetworklyEvent(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string locationName, object locationValue);
+        internal static event InvokeNetworklyEvent OnInvokeLocationNetworkly;
 
-            public VarInfo(LocationInfo locationInfo, bool shouldInvokeSynchronously)
-            {
-                LocationInfo = locationInfo;
-                ShouldInvokeSynchronously = shouldInvokeSynchronously;
-            }
-        }
-
-        internal delegate void networkingInvokeEvent(LocationInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity id);
-        internal static event networkingInvokeEvent onNetworkingInvoke;
-        private static Dictionary<string, VarInfo> fields = new Dictionary<string, VarInfo>();
         public NetworkInterface networkInterface = NetworkInterface.TCP;
-        public string hook = "";
-        public bool isDisabled = false;
-        public bool invokeInServer = true;
         public bool shouldInvokeSynchronously = false;
-        private PacketId packetID = PacketId.SyncVar;
+        public string hook = "";
+        public bool shouldInvokeNetworkly = true;
+        private PacketId packetId = PacketId.SyncVar;
+        private NetworkMemberExecuter<SyncVar> networkExecuter;
+        private LocationInfo locationInfo;
+        private string locationName;
         private MethodInfo hookedMethod;
 
-        public override void OnSetValue(LocationInterceptionArgs args)
+        public SyncVar()
         {
-            base.OnSetValue(args);
+        }
 
-            hookedMethod?.Invoke(args.Instance as NetworkIdentity, null);
-
-            if (isDisabled)
-            {
-                return;
-            }
-
-            lock (NetworkIdentity.scope)
-            {
-                if (!NetworkIdentity.interrupt)
+        public override sealed void OnSetValue(LocationInterceptionArgs args)
+        {
+            NetworkIdentity networkIdentity = args.Instance as NetworkIdentity;
+            InvokeLocation(networkIdentity, () =>
+            { 
+                base.OnSetValue(args);
+                hookedMethod?.Invoke(networkIdentity, null);
+            }, () => {
+                object locationValue;
+                if (args.Value is NetworkIdentity)
                 {
-                    NetworkIdentity.interrupt = true;
-                    return;
+                    locationValue = ((args.Value as NetworkIdentity).id.ToString());
                 }
                 else
                 {
-                    if (!(args.Instance as NetworkIdentity).hasAuthority && !(args.Instance as NetworkIdentity).isInServer)
-                    {
-                    }
-                    else
-                    {
-                        if ((args.Instance as NetworkIdentity).hasInitialized)
-                        {
-                            onNetworkingInvoke?.Invoke(args, packetID, networkInterface, invokeInServer, args.Instance as NetworkIdentity);
-                        }
-                    }
+                    locationValue = args.Value.ToString();
                 }
-            }
+                OnInvokeLocationNetworkly.Invoke(packetId, networkIdentity, networkInterface, locationName, locationValue);
+            });
+        }
 
+        protected virtual void InvokeLocation(NetworkIdentity networkIdentity, Action invokeLocally, Action invokeNetworkly)
+        {
+            networkExecuter.InvokeMember(networkIdentity, invokeLocally, invokeNetworkly);
         }
 
         public override void RuntimeInitialize(LocationInfo locationInfo)
         {
             base.RuntimeInitialize(locationInfo);
-            if (fields.ContainsKey(locationInfo.DeclaringType.Name + locationInfo.Name))
-            {
-                throw new Exception("SyncVar: Duplicate fields name: " + locationInfo.Name);
-            }
-            fields.Add(locationInfo.DeclaringType.Name + locationInfo.Name, new VarInfo(locationInfo, shouldInvokeSynchronously));
+            this.locationInfo = locationInfo;
+            locationName = locationInfo.DeclaringType.Name + ":" + locationInfo.Name;
+            networkExecuter = new NetworkMemberExecuter<SyncVar>(locationName, this, shouldInvokeSynchronously, true, shouldInvokeNetworkly);
             if (typeof(NetworkIdentity).IsAssignableFrom(locationInfo.LocationType))
             {
                 NetworkIdentity.prioritiesIdintities.Add(locationInfo.LocationType);
@@ -94,39 +77,23 @@ namespace Networking
             }
         }
 
-        internal static void NetworkInvoke(NetworkIdentity net, SyncVarPacket packet)//TODO: Remove static usage and use as instance instead
+        protected virtual void InvokeLocationFromNetwork(NetworkIdentity networkIdentity, object licationValue)
         {
-            VarInfo field;
-            Type t = net.GetType();
-            while (!fields.TryGetValue(t.Name + packet.LocationName, out field))
+            var v = licationValue;
+            if (typeof(NetworkIdentity).IsAssignableFrom(locationInfo.LocationType))
             {
-                t = t.BaseType;
-            }
-
-            object newArg = Operations.getValueAsObject(field.LocationInfo.LocationType.Name, packet.LocationValue);//TODO: Remove and use Convert instead
-
-            if (field.ShouldInvokeSynchronously)
-            {
-                lock (NetworkBehavior.synchronousActions)
-                {
-                    NetworkBehavior.synchronousActions.Add(() =>
-                    {
-                        lock (NetworkIdentity.scope)
-                        {
-                            NetworkIdentity.interrupt = false;
-                            field.LocationInfo.SetValue(net, newArg);
-                        }
-                    });
-                }
+                v = NetworkIdentity.entities[int.Parse(v + "")];
             }
             else
             {
-                lock (NetworkIdentity.scope)
-                {
-                    NetworkIdentity.interrupt = false;
-                    field.LocationInfo.SetValue(net, newArg);
-                }
+                v = Convert.ChangeType(v, locationInfo.LocationType);
             }
+            networkExecuter.InvokeMemberFromNetwork(() => locationInfo.SetValue(networkIdentity, v));
+        }
+
+        internal static void NetworkInvoke(NetworkIdentity networkIdentity, SyncVarPacket packet)
+        {
+            NetworkMemberExecuter<SyncVar>.GetNetworkAttributeMemberByMemberName(packet.LocationName).InvokeLocationFromNetwork(networkIdentity, packet.LocationValue);
         }
     }
 }

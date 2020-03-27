@@ -50,18 +50,6 @@ namespace Networking
             base.InitIdentityLocally(identity, ownerID, id, valuesByFields);
         }
 
-        internal void Send(Packet packet, NetworkInterface networkInterface)
-        {
-            if (networkInterface == NetworkInterface.TCP)
-            {
-                client.Send(packet.Data.ToArray());
-            }
-            else
-            {
-                directClient.Send(packet.Data.ToArray());
-            }
-        }
-
         private protected override void ParsePacket(PacketId packetId, object[] args, SocketInfo socketInfo) 
         {
             switch (packetId)
@@ -104,17 +92,42 @@ namespace Networking
             }
         }
 
-        protected override void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
+        protected override void OnInvokeMethodNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string methodName, object[] methodArgs)
         {
             if (!IsConnected)
             {
                 throw new Exception("No connection exist!");
             }
+
+            MethodPacket packet;
+            switch (packetID)
+            {
+                case PacketId.BroadcastMethod:
+                    packet = new BroadcastPacket(networkIdentity.id, methodName, methodArgs);
+                    Send(packet, networkInterface);
+                    break;
+                case PacketId.Command:
+                    packet = new CommandPacket(networkIdentity.id, methodName, methodArgs);
+                    Send(packet, networkInterface);
+                    Console.WriteLine("SENDED: " + methodName);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        protected override void OnInvokeLocationNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string locationName, object locationValue)
+        {
+            if (!IsConnected)
+            {
+                throw new Exception("No connection exist!");
+            }
+
             SyncVarPacket packet;
             switch (packetID)
             {
                 case PacketId.SyncVar:
-                    packet = new SyncVarPacket(args, invokeInServer, networkIdentity.id);
+                    packet = new SyncVarPacket(networkIdentity.id, locationName, locationValue);
                     Send(packet, networkInterface);
                     break;
                 default:
@@ -122,25 +135,15 @@ namespace Networking
             }
         }
 
-        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
+        internal void Send(Packet packet, NetworkInterface networkInterface)
         {
-            if (!IsConnected)
+            if (networkInterface == NetworkInterface.TCP)
             {
-                throw new Exception("No connection exist!");
+                client.Send(packet.Data.ToArray());
             }
-            MethodPacket packet;
-            switch (packetID)
+            else
             {
-                case PacketId.BroadcastMethod:
-                    packet = new BroadcastPacket(networkIdentity.id, args, invokeInServer);
-                    Send(packet, networkInterface);
-                    break;
-                case PacketId.Command:
-                    packet = new CommandPacket(args, networkIdentity.id);
-                    Send(packet, networkInterface);
-                    break;
-                default:
-                    break;
+                directClient.Send(packet.Data.ToArray());
             }
         }
 

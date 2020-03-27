@@ -18,9 +18,8 @@ namespace Networking
     [PSerializable]
     public class Command : MethodNetworkAttribute 
     {
-        public Command() : base(PacketId.Command)
+        public Command() : base(PacketId.Command, false)
         {
-            shouldInvokeImmediatelyIfHasAuthority = false;
         }
     }
 }

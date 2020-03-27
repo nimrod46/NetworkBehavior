@@ -104,19 +104,13 @@ namespace Networking
         private protected override void ParseBroadcastPacket(BroadcastPacket broadcastPacket, SocketInfo socketInfo)
         {
             BroadcastPacket(broadcastPacket, socketInfo);
-            if (broadcastPacket.ShouldInvokeInServer)
-            {
-                base.ParseBroadcastPacket(broadcastPacket, socketInfo);
-            }
+            base.ParseBroadcastPacket(broadcastPacket, socketInfo);
         }
 
         private protected override void ParseSyncVarPacket(SyncVarPacket syncVarPacket, SocketInfo socketInfo)
         {
             BroadcastPacket(syncVarPacket, socketInfo);
-            if (syncVarPacket.ShouldInvokeInServer)
-            {
-                base.ParseSyncVarPacket(syncVarPacket, socketInfo);
-            }
+            base.ParseSyncVarPacket(syncVarPacket, socketInfo);
         }
 
         private void BroadcastPacket(Packet packet, SocketInfo socketInfo)
@@ -220,8 +214,30 @@ namespace Networking
         {
             clientsBeforeSync.Add(GetIdByIpAndPort(ip, port));
         }
+        protected override void OnInvokeMethodNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string methodName, object[] methodArgs)
+        {
+            if (!IsRunning)
+            {
+                throw new Exception("No connection exist!");
+            }
 
-        protected override void SyncVar_onNetworkingInvoke(LocationInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
+            MethodPacket packet;
+            switch (packetID)
+            {
+                case PacketId.BroadcastMethod:
+                    packet = new BroadcastPacket(networkIdentity.id, methodName, methodArgs);
+                    BroadcastPacket(packet, networkInterface, clientsBeforeSync.ToArray());
+                    break;
+                case PacketId.Command:
+                    packet = new CommandPacket(networkIdentity.id, methodName, methodArgs);
+                    SendPacketToAUser(packet, networkInterface, clients[networkIdentity.ownerId].Ip, clients[networkIdentity.ownerId].TcpPort);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        protected override void OnInvokeLocationNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string locationName, object locationValue)
         {
             if (!IsRunning)
             {
@@ -232,30 +248,8 @@ namespace Networking
             switch (packetID)
             {
                 case PacketId.SyncVar:
-                    packet = new SyncVarPacket(args, invokeInServer, networkIdentity.id);
+                    packet = new SyncVarPacket(networkIdentity.id, locationName, locationValue);
                     BroadcastPacket(packet, networkInterface, clientsBeforeSync.ToArray());
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        protected override void MethodNetworkAttribute_onNetworkingInvoke(MethodInterceptionArgs args, PacketId packetID, NetworkInterface networkInterface, bool invokeInServer, NetworkIdentity networkIdentity)
-        {
-            if (!IsRunning)
-            {
-                throw new Exception("No connection exist!");
-            }
-            MethodPacket packet;
-            switch (packetID)
-            {
-                case PacketId.BroadcastMethod:
-                    packet = new BroadcastPacket(networkIdentity.id, args, invokeInServer);
-                    BroadcastPacket(packet, networkInterface, clientsBeforeSync.ToArray());
-                    break;
-                case PacketId.Command:
-                    packet = new CommandPacket(args, networkIdentity.id);
-                    SendPacketToAUser(packet, networkInterface, clients[networkIdentity.ownerId].Ip, clients[networkIdentity.ownerId].TcpPort);
                     break;
                 default:
                     break;
