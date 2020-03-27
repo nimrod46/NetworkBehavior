@@ -109,7 +109,6 @@ namespace Networking
                 case PacketId.Command:
                     packet = new CommandPacket(networkIdentity.id, methodName, methodArgs);
                     Send(packet, networkInterface);
-                    Console.WriteLine("SENDED: " + methodName);
                     break;
                 default:
                     break;
