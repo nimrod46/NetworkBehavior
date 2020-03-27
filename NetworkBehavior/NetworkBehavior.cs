@@ -95,7 +95,7 @@ namespace Networking
             catch (Exception e)
             {
                 Console.WriteLine("Cannot parse packet: ");
-                print(args);
+                Print(args);
                 Console.WriteLine(e);
             }
         }
@@ -159,14 +159,13 @@ namespace Networking
         private protected virtual void ParseSpawnPacket(SpawnPacket spawnPacket, SocketInfo socketInfo)
         {
             NetworkIdentity identity;
-            object o = spawnObjectLocaly(spawnPacket.InstanceName);
+            object o = SpawnObjectLocaly(spawnPacket.InstanceName);
             identity = o as NetworkIdentity;
             InitIdentityLocally(identity, spawnPacket.OwnerId, spawnPacket.NetworkIdentityId, spawnPacket.SpawnParams);
         }
 
         private protected virtual void ParseBroadcastPacket(BroadcastPacket broadcastPacket, SocketInfo socketInfo)
         {
-            Console.WriteLine(broadcastPacket.MethodName);
             ParseMethodPacket(broadcastPacket, socketInfo);
         }
 
@@ -189,27 +188,17 @@ namespace Networking
             if (identity == null)
             {
                 PrintWarning("cannot get netIdentity from packet:");
-                print(networkIdentityPacket.Data.ToArray());
+                Print(networkIdentityPacket.Data.ToArray());
                 return false;
             }
             return true;
-        }
+        }  
 
-        private void InvokeMethodLocaly(MethodPacket packet)
-        {
-            NetworkIdentity identity = GetNetworkIdentityById(packet.NetworkIdentityId);
-            if (identity == null)
-            {
-                return;
-            }
-            
-        }
-
-        private object spawnObjectLocaly(string fullName)
+        private object SpawnObjectLocaly(string fullName)
         {
             try
             {
-                return Activator.CreateInstance(getNetworkClassTypeByName(fullName));
+                return Activator.CreateInstance(GetNetworkClassTypeByName(fullName));
             }
             catch (Exception e)
             {
@@ -220,7 +209,7 @@ namespace Networking
             }
         }
 
-        protected Type getNetworkClassTypeByName(string fullName)
+        protected Type GetNetworkClassTypeByName(string fullName)
         {
             if (classes.TryGetValue(fullName, out Type type))
             {
@@ -280,11 +269,11 @@ namespace Networking
                     if (!valuesByFields[p.Name].Equals("null")) {
                         if (p is FieldInfo)
                         {
-                            ((FieldInfo)p).SetValue(obj, Operations.getValueAsObject(((FieldInfo)p).FieldType.Name, valuesByFields[p.Name]));
+                            ((FieldInfo)p).SetValue(obj, Operations.GetValueAsObject(((FieldInfo)p).FieldType.Name, valuesByFields[p.Name]));
                         }
                         else
                         {
-                            ((PropertyInfo)p).SetValue(obj, Operations.getValueAsObject(((PropertyInfo)p).PropertyType.Name, valuesByFields[p.Name]));
+                            ((PropertyInfo)p).SetValue(obj, Operations.GetValueAsObject(((PropertyInfo)p).PropertyType.Name, valuesByFields[p.Name]));
                         }
                     }
                 });
@@ -295,7 +284,6 @@ namespace Networking
             if (!NetworkIdentity.entities.TryGetValue(id, out NetworkIdentity identity))
             {
                 PrintWarning("no NetworkIdentity with id " + id + " was found.");
-                    int i = identity.id;
                 return null;
             }
             return identity;
@@ -306,7 +294,7 @@ namespace Networking
             return int.Parse(ip.Replace(".", "") + port.ToString());
         }
 
-        internal static void print(object[] s)
+        internal static void Print(object[] s)
         {
             foreach (object item in s)
             {

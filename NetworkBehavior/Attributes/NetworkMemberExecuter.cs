@@ -13,14 +13,13 @@ using System.Threading;
 
 namespace Networking
 {
-    [PSerializable]
     internal class NetworkMemberExecuter<T> where T : Aspect
     {
         internal static readonly Dictionary<string, T> networkAttributes = new Dictionary<string, T>();
 
-        private bool shouldInvokeSynchronously;
-        private bool shouldInvokeFromLocaly;
-        private bool shouldInvokeNetworkly;
+        private readonly bool shouldInvokeSynchronously;
+        private readonly bool shouldInvokeFromLocaly;
+        private readonly bool shouldInvokeNetworkly;
         private string scope = "";
         public bool invokedFromNetwork;
 

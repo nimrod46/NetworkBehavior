@@ -86,7 +86,7 @@ namespace Networking
                 catch (Exception e)
                 {
                     Console.WriteLine("Cannot parse packet: ");
-                    print(s);
+                    Print(s);
                     Console.WriteLine(e);
                 }
             }

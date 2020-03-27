@@ -66,7 +66,7 @@ namespace Networking
                 catch (Exception e)
                 {
                     Console.WriteLine("Cannot parse packet: ");
-                    print(s);
+                    Print(s);
                     Console.WriteLine(e);
                 }
             }
@@ -136,7 +136,7 @@ namespace Networking
                 {
                     Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(i);
                     var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
-                    spawnPacket = new SpawnObjectPacket(getNetworkClassTypeByName(i.GetType().FullName), i.id, i.ownerId, args); //Spawn all existing clients in the remote client
+                    spawnPacket = new SpawnObjectPacket(GetNetworkClassTypeByName(i.GetType().FullName), i.id, i.ownerId, args); //Spawn all existing clients in the remote client
                     SendPacketToAUser(spawnPacket, NetworkInterface.TCP, ip, port);
                 }
                 int clientId = GetIdByIpAndPort(ip, port);
