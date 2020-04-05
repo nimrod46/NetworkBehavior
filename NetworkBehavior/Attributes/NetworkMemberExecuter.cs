@@ -55,11 +55,11 @@ namespace Networking
 
                     if (!networkIdentityInstance.hasInitialized) return;
 
-                    if (!networkIdentityInstance.hasAuthority && !networkIdentityInstance.isInServer)
-                    {
-                        NetworkBehavior.PrintWarning("NetworkAttribute:InvokeNetworkly was called on none authority identity");
-                    }
-                    else
+                    //if (!networkIdentityInstance.hasAuthority && !networkIdentityInstance.isInServer)
+                    //{
+                    //    NetworkBehavior.PrintWarning("NetworkAttribute:InvokeNetworkly was called on none authority identity");
+                    //}
+                    //else
                     {
                         invokeNetworkly?.Invoke();
                     }
