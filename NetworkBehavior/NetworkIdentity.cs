@@ -68,13 +68,8 @@ namespace Networking
             OnBeginSynchronization?.Invoke();
         }
         
-        public void Destroy()
-        {
-            DestroyLocally();
-        }
-
         [BroadcastMethod]
-        private void DestroyLocally()
+        public void Destroy()
         {
             OnDestroyEvent?.Invoke(this);
             entities.Remove(id);

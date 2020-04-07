@@ -151,18 +151,21 @@ namespace Networking
 
         internal void DirectBroadcast(object[] args, params int[] clientsId)
         {
-            foreach (var client in clients)
+            lock (syncObj)
             {
-                if ( clientsId.Contains(client.Key))
+                foreach (var client in clients)
                 {
-                    continue;
+                    if (clientsId.Contains(client.Key))
+                    {
+                        continue;
+                    }
+                    if (client.Value.UdpPort == 0)
+                    {
+                        PrintWarning("cannot send packet as UDP for client: " + client.Key);
+                        continue;
+                    }
+                    directServer.Send(args, client.Value.Ip, client.Value.UdpPort);
                 }
-                if(client.Value.UdpPort == 0)
-                {
-                    PrintWarning("cannot send packet as UDP for client: " + client.Key);
-                    continue;
-                }
-                directServer.Send(args, client.Value.Ip, client.Value.UdpPort);
             }
         }
 
