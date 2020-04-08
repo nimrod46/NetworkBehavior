@@ -5,54 +5,38 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 using System.ComponentModel.Design;
-using PostSharp.Serialization;
-using PostSharp.Aspects;
-using PostSharp.Aspects.Configuration;
 using System.Reflection;
 using System.Threading;
 
 namespace Networking
 {
-    internal class NetworkMemberExecuter<T> where T : Aspect
+    internal abstract class NetworkMemberExecuter
     {
-        internal static readonly Dictionary<string, T> networkAttributes = new Dictionary<string, T>();
 
-        private readonly bool shouldInvokeSynchronously;
-        private readonly bool shouldInvokeFromLocaly;
-        private readonly bool shouldInvokeNetworkly;
         private string scope = "";
         public bool invokedFromNetwork;
 
-        internal NetworkMemberExecuter(string memberName, T networkAttribute, bool shouldInvokeSynchronously, bool shouldInvokeFromLocaly, bool shouldInvokeNetworkly)
+        internal NetworkMemberExecuter()
         {
-            if (networkAttributes.ContainsKey(memberName))
-            {
-                throw new Exception("NetworkAttribute: Duplicate member name: " + memberName);
-            }
-            networkAttributes.Add(memberName, networkAttribute);
-            this.shouldInvokeSynchronously = shouldInvokeSynchronously;
-            this.shouldInvokeFromLocaly = shouldInvokeFromLocaly;
-            this.shouldInvokeNetworkly = shouldInvokeNetworkly;
+            //if (networkAttributes.ContainsKey(memberName))
+            //{
+            //    throw new Exception("NetworkAttribute: Duplicate member name: " + memberName);
+            //}
+            //networkAttributes.Add(memberName, networkAttribute);
             invokedFromNetwork = false;
         }
 
-        internal virtual void InvokeMember(NetworkIdentity networkIdentityInstance, Action action, Action invokeNetworkly)
+        internal virtual void InvokeMemberFromLocal(NetworkIdentity networkIdentityInstance, Action invokeNetworkly)
         {
             lock (scope)
             {
                 if (invokedFromNetwork)
                 {
                     invokedFromNetwork = false;
-                    action.Invoke();
                 }
+
                 else
                 {
-                    if(shouldInvokeFromLocaly)
-                    {
-                        action.Invoke();
-                    }
-                    if (!shouldInvokeNetworkly) return;
-
                     if (!networkIdentityInstance.hasInitialized) return;
 
                     //if (!networkIdentityInstance.hasAuthority && !networkIdentityInstance.isInServer)
@@ -67,7 +51,7 @@ namespace Networking
             }
         }
 
-        internal virtual void InvokeMemberFromNetwork(Action action)
+        protected virtual void InvokeMemberFromNetwork(Action action, bool shouldInvokeSynchronously)
         {
             if (shouldInvokeSynchronously)
             {
@@ -93,13 +77,15 @@ namespace Networking
             }
         }
 
-        internal static T GetNetworkAttributeMemberByMemberName(string memberName)
-        {
-            if (!networkAttributes.TryGetValue(memberName, out T networkAttribute))
-            { 
-                throw new Exception("NetworkAttribute: No member with the name: " + memberName + " was found");
-            }
-            return networkAttribute;      
-        }
+        internal abstract void InvokeMemberFromNetwork(NetworkIdentity networkIdentity, bool shouldInvokeSynchronously, params object[] args);
+
+        //internal static T GetNetworkAttributeMemberByMemberName(string memberName)
+        //{
+        //    if (!networkAttributes.TryGetValue(memberName, out T networkAttribute))
+        //    { 
+        //        throw new Exception("NetworkAttribute: No member with the name: " + memberName + " was found");
+        //    }
+        //    return networkAttribute;      
+        //}
     }
 }

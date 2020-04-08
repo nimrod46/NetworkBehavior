@@ -1,5 +1,4 @@
-﻿using PostSharp.Aspects;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -77,8 +76,8 @@ namespace Networking
 
         public void Start()
         {
-            MethodNetworkAttribute.OnInvokeMethodNetworkly += OnInvokeMethodNetworkly;
-            SyncVar.OnInvokeLocationNetworkly += OnInvokeLocationNetworkly;
+            NetworkIdentity.OnInvokeMethodNetworkly += OnInvokeMethodNetworkly;
+            NetworkIdentity.OnInvokeLocationNetworkly += OnInvokeLocationNetworkly; 
         }
 
         protected abstract void OnInvokeLocationNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string locationName, object locationValue);
@@ -147,7 +146,7 @@ namespace Networking
         {
             if (TryGetNetworkIdentityByPacket(syncVarPacket, out NetworkIdentity identity))
             {
-                SyncVar.NetworkInvoke(identity, syncVarPacket);
+                NetworkIdentity.NetworkSyncVarInvoke(identity, syncVarPacket);
             }
         }
 
@@ -178,7 +177,7 @@ namespace Networking
         {
             if (TryGetNetworkIdentityByPacket(methodPacket, out NetworkIdentity identity))
             {
-                MethodNetworkAttribute.NetworkInvoke(identity, methodPacket);
+                NetworkIdentity.NetworkMethodInvoke(identity, methodPacket);
             }
         }
 
