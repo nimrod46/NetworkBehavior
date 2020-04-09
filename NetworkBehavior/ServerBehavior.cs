@@ -315,10 +315,7 @@ namespace Networking
                 Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(identity);
                 args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
             }
-            else
-            {
-                identity = Activator.CreateInstance(instance) as NetworkIdentity;
-            }
+            identity = Activator.CreateInstance(instance) as NetworkIdentity;
             int owner = 0;
             if (clientId == -1)
             {

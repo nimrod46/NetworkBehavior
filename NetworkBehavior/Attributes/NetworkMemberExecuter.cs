@@ -7,13 +7,14 @@ using System.Web;
 using System.ComponentModel.Design;
 using System.Reflection;
 using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace Networking
 {
     internal abstract class NetworkMemberExecuter
     {
 
-        private string scope = "";
+        private object scope = new object();
         public bool invokedFromNetwork;
 
         internal NetworkMemberExecuter()
