@@ -64,6 +64,7 @@ namespace Networking
                         {
                             invokedFromNetwork = true;
                             action.Invoke();
+                            invokedFromNetwork = false;
                         }
                     });
                 }
@@ -74,6 +75,7 @@ namespace Networking
                 {
                     invokedFromNetwork = true;
                     action.Invoke();
+                    invokedFromNetwork = false;
                 }
             }
         }

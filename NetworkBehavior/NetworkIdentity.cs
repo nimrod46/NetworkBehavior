@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static NetworkingLib.Server;
 
 namespace Networking
 {
@@ -14,18 +15,80 @@ namespace Networking
     public class NetworkIdentity : IComparable<NetworkIdentity>
     {
         
+        public struct IdentityId : IComparable
+        {
+            public long Id { get; set; }
+
+            private IdentityId(long id)
+            {
+                Id = id;
+            }
+
+            public static bool operator ==(IdentityId i1, IdentityId i2)
+            {
+                return i1.Equals(i2);
+            }
+
+            public static bool operator !=(IdentityId i1, IdentityId i2)
+            {
+                return !i1.Equals(i2);
+            }
+
+            public static IdentityId operator ++(IdentityId i)
+            {
+                i.Id++;
+                return i;
+            }
+
+            public override int GetHashCode()
+            {
+                return Id.GetHashCode();
+            }
+
+            public static IdentityId FromLong(long id)
+            {
+                return new IdentityId(id);
+            }
+
+            internal static IdentityId ZeroIdentityId = new IdentityId(0);
+
+            internal static IdentityId InvalidIdentityId = new IdentityId(0);
+
+            public override bool Equals(object obj)
+            {
+                return obj is IdentityId id &&
+                       Id == id.Id;
+            }
+
+            public int CompareTo(object obj)
+            {
+                if (obj is IdentityId id)
+                {
+                    return Id.CompareTo(id.Id);
+                }
+                return 0;
+            }
+
+            public override string ToString()
+            {
+                return Id.ToString();
+            }
+        }
+
         const BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic;
 
-        internal delegate void InvokeMethodNetworklyEvent(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string methodName, object[] methodArgs);
-        internal static event InvokeMethodNetworklyEvent OnInvokeMethodNetworkly;
-        internal delegate void InvokeLocationNetworklyEvent(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string locationName, object locationValue);
+        internal delegate void InvokeBrodcastMethodNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs);
+        internal static event InvokeBrodcastMethodNetworklyEvent OnInvokeBrodcastMethodMethodNetworkly;
+        internal delegate void InvokeCommandMethodNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, EndPointId? targetId = null);
+        internal static event InvokeCommandMethodNetworklyEvent OnInvokeCommandMethodNetworkly;
+        internal delegate void InvokeLocationNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue);
         internal static event InvokeLocationNetworklyEvent OnInvokeLocationNetworkly;
-
-        public static SortedList<int, NetworkIdentity> entities = new SortedList<int, NetworkIdentity>();
+        
+        public static SortedList<IdentityId, NetworkIdentity> entities = new SortedList<IdentityId, NetworkIdentity>();
         internal static List<Type> prioritiesIdintities = new List<Type>();
         internal static readonly char packetSpiltter = '¥';
         internal static readonly char argsSplitter = '|';
-        internal static int lastId = 0;
+        internal static IdentityId lastId = IdentityId.ZeroIdentityId;
 
         internal Dictionary<string, NetworkMethodExecuter> methodsByClass = new Dictionary<string, NetworkMethodExecuter>();
         internal Dictionary<string, NetworkLocationExecuter> locationByClass = new Dictionary<string, NetworkLocationExecuter>();
@@ -38,15 +101,18 @@ namespace Networking
         internal delegate void BeginSynchronization();
         internal event BeginSynchronization OnBeginSynchronization;
 
+        public EndPointId OwnerId { get; set; }
+        public IdentityId Id { get; set; }
+
         public NetworkBehavior NetworkBehavior;
         public bool isServerAuthority = false;
         public bool hasAuthority = false;
         public bool isInServer = false;
         public bool hasInitialized = false;
         public bool hasFieldsBeenInitialized = false;
-        public int id;
-        public int ownerId;
+      
         internal bool isUsedAsVar;
+
         public NetworkIdentity()
         {
             if (!NetworkBehavior.classes.ContainsKey(GetType().FullName))
@@ -58,7 +124,7 @@ namespace Networking
             {
                 try
                 {
-                    methodsByClass.Add(method.Name, new NetworkMethodExecuter(method));
+                    methodsByClass.Add(method.Name + ":" + method.GetParameters().Length, new NetworkMethodExecuter(method));
                 }
                 catch (Exception)
                 {
@@ -86,8 +152,9 @@ namespace Networking
 
         }
 
-        public void InvokeBroadcastMethodNetworkly(string methodName, NetworkInterface networkInterface = NetworkInterface.TCP, params object[] args)
+        public void InvokeBroadcastMethodNetworkly(string methodName, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP, params object[] args)
         {
+            methodName = methodName + ":" + args.Length;
             if (methodsByClass.TryGetValue(methodName, out NetworkMethodExecuter networkMemberExecuter))
             {
                 networkMemberExecuter.InvokeMemberFromLocal(this, () =>
@@ -101,25 +168,26 @@ namespace Networking
                         }
                         else if (o is NetworkIdentity)
                         {
-                            methodArgs.Add((o as NetworkIdentity).id.ToString());
+                            methodArgs.Add((o as NetworkIdentity).Id.ToString());
                         }
                         else
                         {
                             methodArgs.Add(o.ToString());
                         }
                     }
-                    OnInvokeMethodNetworkly.Invoke(PacketId.BroadcastMethod, this, networkInterface, methodName, methodArgs.ToArray());
+                    OnInvokeBrodcastMethodMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray());
                 });
             }
         }
 
         public void InvokeBroadcastMethodNetworkly(string methodName, params object[] args)
         {
-            InvokeBroadcastMethodNetworkly(methodName, NetworkInterface.TCP, args);
+            InvokeBroadcastMethodNetworkly(methodName, NetworkInterfaceType.TCP, args);
         }
 
-        public void InvokeCommandMethodNetworkly(string methodName, NetworkInterface networkInterface = NetworkInterface.TCP, params object[] args)
+        public void InvokeCommandMethodNetworkly(string methodName, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP, EndPointId? targetId = null, params object[] args)
         {
+            methodName = methodName + ":" + args.Length;
             if (methodsByClass.TryGetValue(methodName, out NetworkMethodExecuter networkMemberExecuter))
             {
                 networkMemberExecuter.InvokeMemberFromLocal(this, () =>
@@ -133,24 +201,34 @@ namespace Networking
                         }
                         else if (o is NetworkIdentity)
                         {
-                            methodArgs.Add((o as NetworkIdentity).id.ToString());
+                            methodArgs.Add((o as NetworkIdentity).Id.ToString());
                         }
                         else
                         {
                             methodArgs.Add(o.ToString());
                         }
                     }
-                    OnInvokeMethodNetworkly.Invoke(PacketId.Command, this, networkInterface, methodName, methodArgs.ToArray());
+                    OnInvokeCommandMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray(), targetId);
                 });
             }
         }
 
-        public void InvokeCommandMethodNetworkly(string methodName, params object[] args)
+        public void InvokeCommandMethodNetworkly(string methodName, EndPointId? targetId, params object[] args)
         {
-            InvokeCommandMethodNetworkly(methodName, NetworkInterface.TCP, args);
+            InvokeCommandMethodNetworkly(methodName, NetworkInterfaceType.TCP, targetId, args);
         }
 
-        public void InvokeSyncVarNetworkly(string locationName, object value, NetworkInterface networkInterface = NetworkInterface.TCP)
+        public void InvokeCommandMethodNetworkly(string methodName, params object[] args)
+        {
+            InvokeCommandMethodNetworkly(methodName, NetworkInterfaceType.TCP, null, args);
+        }
+
+        public void InvokeCommandMethodNetworkly(string methodName, NetworkInterfaceType networkInterface, params object[] args)
+        {
+            InvokeCommandMethodNetworkly(methodName, networkInterface, null, args);
+        }
+
+        public void InvokeSyncVarNetworkly(string locationName, object value, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP)
         {
             if (locationByClass.TryGetValue(locationName, out NetworkLocationExecuter networkMemberExecuter))
             {
@@ -158,13 +236,13 @@ namespace Networking
                 {
                     if (value is NetworkIdentity)
                     {
-                        value = ((value as NetworkIdentity).id.ToString());
+                        value = ((value as NetworkIdentity).Id.ToString());
                     }
                     else
                     {
                         value = value.ToString();
                     }
-                    OnInvokeLocationNetworkly.Invoke(PacketId.SyncVar, this, networkInterface, locationName, value);
+                    OnInvokeLocationNetworkly.Invoke(this, networkInterface, locationName, value);
                 });
             }
         }
@@ -178,9 +256,9 @@ namespace Networking
         {
             lock (entities)
             {
-                if (!entities.ContainsKey(id))
+                if (!entities.ContainsKey(Id))
                 {
-                    entities.Add(id, this);
+                    entities.Add(Id, this);
                 }
                 if (hasAuthority)
                 {
@@ -200,32 +278,32 @@ namespace Networking
         {
             InvokeBroadcastMethodNetworkly(nameof(Destroy));
             OnDestroyEvent?.Invoke(this);
-            entities.Remove(id);
+            entities.Remove(Id);
         }
 
-        public void SetAuthority(int newOwnerId)
-        {
-            InvokeBroadcastMethodNetworkly(nameof(SetAuthority), newOwnerId);
-            if (newOwnerId == -1)
-            {
-                hasAuthority = isInServer;
-                ownerId = NetworkBehavior.serverPort;
-                isServerAuthority = true;
-            }
-            else
-            {
-                if (NetworkBehavior.GetNetworkIdentityById(newOwnerId).ownerId == newOwnerId)
-                {
-                    ownerId = newOwnerId;
-                    hasAuthority = ownerId == id;
-                    isServerAuthority = NetworkBehavior.serverPort == newOwnerId;
-                }
-                else
-                {
-                    throw new Exception("Invalid owner id was given");
-                }
-            }
-        }
+        //public void SetAuthority(EndPointId newOwnerId)
+        //{
+        //    InvokeBroadcastMethodNetworkly(nameof(SetAuthority), newOwnerId);
+        //    if (newOwnerId == EndPointId.InvalidIdentityId)
+        //    {
+        //        hasAuthority = isInServer;
+        //        OwnerId = NetworkBehavior.serverEndPointId;
+        //        isServerAuthority = true;
+        //    }
+        //    else
+        //    {
+        //        if (NetworkBehavior.GetNetworkIdentityById(newOwnerId).OwnerId == newOwnerId)
+        //        {
+        //            OwnerId = newOwnerId;
+        //            hasAuthority = OwnerId == Id;
+        //            isServerAuthority = NetworkBehavior.serverEndPointId == newOwnerId;
+        //        }
+        //        else
+        //        {
+        //            throw new Exception("Invalid owner id was given");
+        //        }
+        //    }
+        //}
 
         internal static void NetworkSyncVarInvoke(NetworkIdentity identity, SyncVarPacket syncVarPacket)
         {

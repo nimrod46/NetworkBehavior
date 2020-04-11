@@ -7,6 +7,7 @@ using System.Web;
 using System.ComponentModel.Design;
 using System.Reflection;
 using System.Threading;
+using static Networking.NetworkIdentity;
 
 namespace Networking
 {
@@ -26,7 +27,7 @@ namespace Networking
                 var v = args[i];
                 if (typeof(NetworkIdentity).IsAssignableFrom(item.ParameterType))
                 {
-                    v = NetworkIdentity.entities[int.Parse(v + "")];
+                    v = NetworkIdentity.entities[IdentityId.FromLong(long.Parse(v + ""))];
                 }
                 else
                 {

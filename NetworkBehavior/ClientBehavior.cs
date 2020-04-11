@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Networking;
 using NetworkingLib;
+using static Networking.NetworkIdentity;
+using static NetworkingLib.Server;
 
 namespace Networking
 {
@@ -30,9 +32,9 @@ namespace Networking
             client = new Client(serverIp, serverPort, '~', '|');
             client.OnReceivedEvent += Client_receivedEvent;
             client.OnConnectionLostEvent += Client_serverDisconnectedEvent;
-            if (client.Connect(out long pingMs))
+            if (client.Connect(out long pingMs, out EndPointId endPointId))
             {
-                id = GetIdByIpAndPort(serverIp, client.GetPort());
+                base.localEndPointId = endPointId;
                 Start(); 
                 Console.WriteLine("Connection established with: " + pingMs + " ping ms");
                 IsConnected = true;
@@ -43,29 +45,44 @@ namespace Networking
             }
         }
 
-        protected override void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, params object[] valuesByFields)
+        private void ReceivedEvent(object[] data, string address, int port)
+        {
+            try
+            {
+                SocketInfo info = new SocketInfo(address, port, NetworkInterfaceType.UDP);
+                ParseArgs(data, serverEndPointId, info);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Cannot parse packet: ");
+                Print(data);
+                Console.WriteLine(e);
+            }
+        }
+
+        protected override void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerID, IdentityId id, params object[] valuesByFields)
         {
             identity.isInServer = false;
             base.InitIdentityLocally(identity, ownerID, id, valuesByFields);
         }
 
-        private protected override void ParsePacket(PacketId packetId, object[] args, SocketInfo socketInfo) 
+        private protected override void ParsePacket(PacketId packetId, object[] args, EndPointId endPointId, SocketInfo socketInfo) 
         {
             switch (packetId)
             {
                 case PacketId.InitiateDircetInterface:
-                    DircetInterfaceInitiatingPacket initiatingPacket = new DircetInterfaceInitiatingPacket(id);
-                    Send(initiatingPacket, NetworkInterface.UDP);
+                    DircetInterfaceInitiatingPacket initiatingPacket = new DircetInterfaceInitiatingPacket(localEndPointId);
+                    Send(initiatingPacket, NetworkInterfaceType.UDP);
                     break;
                 default:
-                    base.ParsePacket(packetId, args, socketInfo);
+                    base.ParsePacket(packetId, args, endPointId, socketInfo);
                     break;
             }
         }
         public void Synchronize()
         {
             BeginSynchronizationPacket packet = new BeginSynchronizationPacket();
-            Send(packet, NetworkInterface.TCP);
+            Send(packet, NetworkInterfaceType.TCP);
         }
 
         private void Client_serverDisconnectedEvent(string ip, int port)
@@ -80,7 +97,7 @@ namespace Networking
             {
                 try
                 {
-                    ParseArgs(s, new SocketInfo(ip, port, NetworkInterface.TCP));
+                    ParseArgs(s, serverEndPointId, new SocketInfo(ip, port, NetworkInterfaceType.TCP));
                 }
                 catch (Exception e)
                 {
@@ -91,30 +108,30 @@ namespace Networking
             }
         }
 
-        protected override void OnInvokeMethodNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string methodName, object[] methodArgs)
+        protected override void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs)
+        {
+            if (!IsConnected)
+            {
+                throw new Exception("No connection exist!");
+            }
+            
+            MethodPacket packet;
+            packet = new BroadcastPacket(networkIdentity.Id, methodName, methodArgs);
+            Send(packet, networkInterface);
+        }
+        protected override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, EndPointId? targetId = null)
         {
             if (!IsConnected)
             {
                 throw new Exception("No connection exist!");
             }
 
-            MethodPacket packet;
-            switch (packetID)
-            {
-                case PacketId.BroadcastMethod:
-                    packet = new BroadcastPacket(networkIdentity.id, methodName, methodArgs);
-                    Send(packet, networkInterface);
-                    break;
-                case PacketId.Command:
-                    packet = new CommandPacket(networkIdentity.id, methodName, methodArgs);
-                    Send(packet, networkInterface);
-                    break;
-                default:
-                    break;
-            }
+            CommandPacket packet;
+            packet = new CommandPacket(networkIdentity.Id, methodName, methodArgs);
+            Send(packet, networkInterface);
         }
 
-        protected override void OnInvokeLocationNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string locationName, object locationValue)
+        protected override void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue)
         {
             if (!IsConnected)
             {
@@ -122,20 +139,13 @@ namespace Networking
             }
 
             SyncVarPacket packet;
-            switch (packetID)
-            {
-                case PacketId.SyncVar:
-                    packet = new SyncVarPacket(networkIdentity.id, locationName, locationValue);
-                    Send(packet, networkInterface);
-                    break;
-                default:
-                    break;
-            }
+            packet = new SyncVarPacket(networkIdentity.Id, locationName, locationValue);
+            Send(packet, networkInterface);
         }
 
-        internal void Send(Packet packet, NetworkInterface networkInterface)
+        internal void Send(Packet packet, NetworkInterfaceType networkInterface)
         {
-            if (networkInterface == NetworkInterface.TCP)
+            if (networkInterface == NetworkInterfaceType.TCP)
             {
                 client.Send(packet.Data.ToArray());
             }

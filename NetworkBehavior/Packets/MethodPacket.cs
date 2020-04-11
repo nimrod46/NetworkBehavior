@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Networking.NetworkIdentity;
 
 namespace Networking
 {
@@ -13,7 +14,7 @@ namespace Networking
         public int MethodArgsCount { get; private set; }
         public object[] MethodArgs { get; private set; }
 
-        public MethodPacket(PacketId packetId, int id, string methodName, object[] methodArgs) : base(packetId, id)
+        public MethodPacket(PacketId packetId, IdentityId id, string methodName, object[] methodArgs) : base(packetId, id)
         {
             MethodName = methodName;
             MethodArgsCount = methodArgs.Count();

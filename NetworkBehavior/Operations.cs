@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Networking.NetworkIdentity;
 
 namespace Networking
 {
@@ -50,9 +51,9 @@ namespace Networking
                     newArgs = int.Parse(value + "");
                     break;
                 default:
-                    if(NetworkIdentity.entities.Keys.Contains(int.Parse(value + "")))
+                    if(NetworkIdentity.entities.Keys.Contains(IdentityId.FromLong(long.Parse(value + ""))))
                     {
-                        newArgs = NetworkIdentity.entities[int.Parse(value + "")];
+                        newArgs = NetworkIdentity.entities[IdentityId.FromLong(long.Parse(value + ""))];
                     }
                     else
                     {

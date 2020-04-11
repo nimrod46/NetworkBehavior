@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Networking.NetworkIdentity;
 
 namespace Networking
 {
@@ -11,7 +12,7 @@ namespace Networking
         public string LocationName { get; private set; }
         public object LocationValue { get; private set; }
 
-        internal SyncVarPacket(int networkIdentityId, string locationName, object locationValue) : base (PacketId.SyncVar, networkIdentityId)
+        internal SyncVarPacket(IdentityId networkIdentityId, string locationName, object locationValue) : base (PacketId.SyncVar, networkIdentityId)
         {
             LocationName = locationName;
             LocationValue = locationValue;

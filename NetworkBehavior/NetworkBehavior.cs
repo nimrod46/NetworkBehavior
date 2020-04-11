@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using static Networking.NetworkIdentity;
+using static NetworkingLib.Server;
 
 namespace Networking
 {
@@ -15,12 +17,6 @@ namespace Networking
         SyncVar,
         SpawnObject,
         BeginSynchronization,
-    }
-
-    public enum NetworkInterface
-    {
-        TCP,
-        UDP
     }
 
     internal struct EndPoint
@@ -37,22 +33,6 @@ namespace Networking
         }
     }
 
-    internal struct SocketInfo
-    {
-        public string Ip { get; set; }
-        public int Port { get; set; }
-        public NetworkInterface NetworkInterface { get; set; }
-
-        public SocketInfo(string ip, int port, NetworkInterface networkInterface)
-        {
-            Ip = ip;
-            Port = port;
-            NetworkInterface = networkInterface;
-        }
-    }
-
-
-
     public abstract class NetworkBehavior
     {
         internal const string WARNING_MESSAGEP_REFIX = "NetworkBehavior lib WARNING: ";
@@ -64,7 +44,8 @@ namespace Networking
         public event IdentityInitializeEventHandler OnLocalIdentityInitialize;
 
         public readonly int serverPort;
-        public int id;
+        public readonly EndPointId serverEndPointId;
+        public EndPointId localEndPointId;
         internal static Dictionary<string, Type> classes = new Dictionary<string, Type>();
 
         
@@ -72,77 +53,66 @@ namespace Networking
         public NetworkBehavior(int serverPort)
         {
             this.serverPort = serverPort;
+            this.serverEndPointId = EndPointId.FromLong(serverPort);
         }
 
         public void Start()
         {
-            NetworkIdentity.OnInvokeMethodNetworkly += OnInvokeMethodNetworkly;
+            NetworkIdentity.OnInvokeBrodcastMethodMethodNetworkly += OnInvokeBroadcastMethodNetworkly;
+            NetworkIdentity.OnInvokeCommandMethodNetworkly += OnInvokeCommandMethodNetworkly;
             NetworkIdentity.OnInvokeLocationNetworkly += OnInvokeLocationNetworkly; 
         }
 
-        protected abstract void OnInvokeLocationNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string locationName, object locationValue);
+        protected abstract void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue);
 
-        protected abstract void OnInvokeMethodNetworkly(PacketId packetID, NetworkIdentity networkIdentity, NetworkInterface networkInterface, string memberName, object[] methodArgs);
+        protected abstract void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs);
 
-        protected virtual void ReceivedEvent(object[] args, string ip, int port)
-        {
-            try
-            {
-                SocketInfo info = new SocketInfo(ip, port, NetworkInterface.UDP);
-                ParseArgs(args, info);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Cannot parse packet: ");
-                Print(args);
-                Console.WriteLine(e);
-            }
-        }
+        protected abstract void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, EndPointId? targetId = null);
 
-        private protected void ParseArgs(object[] args, SocketInfo socketInfo)
+        private protected void ParseArgs(object[] args, EndPointId endPointId, SocketInfo socketInfo)
         {
             if (!int.TryParse(args[0].ToString(), out int packetID))
             {
                 throw new Exception("Invalid packet recived, id: " + args[0]);
             }
-            ParsePacket((PacketId) packetID, args, socketInfo);
+            ParsePacket((PacketId) packetID, args, endPointId, socketInfo);
         }
 
-        private protected virtual void ParsePacket(PacketId packetId, object[] args, SocketInfo socketInfo) 
+        private protected virtual void ParsePacket(PacketId packetId, object[] args, EndPointId endPointId, SocketInfo socketInfo) 
         {
             switch (packetId)
             {
                 case PacketId.LobbyInfo:
                     LobbyInfoPacket lobbyInfoPacket = new LobbyInfoPacket(args.ToList());
-                    ParseLobbyInfoPacket(lobbyInfoPacket, socketInfo);
+                    ParseLobbyInfoPacket(lobbyInfoPacket, endPointId, socketInfo);
                     break;
                 case PacketId.BroadcastMethod:
                     BroadcastPacket broadcastPacket = new BroadcastPacket(args.ToList());
-                    ParseBroadcastPacket(broadcastPacket, socketInfo);
+                    ParseBroadcastPacket(broadcastPacket, endPointId, socketInfo);
                     break;
                 case PacketId.Command:
                     CommandPacket commandPacket = new CommandPacket(args.ToList());
-                    ParseCommandPacket(commandPacket, socketInfo);
+                    ParseCommandPacket(commandPacket, endPointId, socketInfo);
                     break;
                 case PacketId.SyncVar:
                     SyncVarPacket syncVarPacket = new SyncVarPacket(args.ToList());
-                    ParseSyncVarPacket(syncVarPacket, socketInfo);
+                    ParseSyncVarPacket(syncVarPacket, endPointId, socketInfo);
                     break;
                 case PacketId.SpawnObject:
                     SpawnObjectPacket spawnObjectPacket = new SpawnObjectPacket(args.ToList());
-                    ParseSpawnObjectPacket(spawnObjectPacket, socketInfo);
+                    ParseSpawnObjectPacket(spawnObjectPacket, endPointId, socketInfo);
                     break;
                 default:
                     throw new Exception("Invalid packet recived, id: " + args[0]);
             }
         }
 
-        private protected virtual void ParseLobbyInfoPacket(LobbyInfoPacket lobbyInfoPacket, SocketInfo socketInfo)
+        private protected virtual void ParseLobbyInfoPacket(LobbyInfoPacket lobbyInfoPacket, EndPointId endPointId, SocketInfo socketInfo)
         {
             OnLobbyInfoEvent?.Invoke(lobbyInfoPacket.Info);
         }
 
-        private protected virtual void ParseSyncVarPacket(SyncVarPacket syncVarPacket, SocketInfo socketInfo)
+        private protected virtual void ParseSyncVarPacket(SyncVarPacket syncVarPacket, EndPointId endPointId, SocketInfo socketInfo)
         {
             if (TryGetNetworkIdentityByPacket(syncVarPacket, out NetworkIdentity identity))
             {
@@ -150,7 +120,7 @@ namespace Networking
             }
         }
 
-        private protected virtual void ParseSpawnObjectPacket(SpawnObjectPacket spawnObjectPacket, SocketInfo socketInfo)
+        private protected virtual void ParseSpawnObjectPacket(SpawnObjectPacket spawnObjectPacket, EndPointId endPointId, SocketInfo socketInfo)
         {
             ParseSpawnPacket(spawnObjectPacket, socketInfo);
         }
@@ -163,12 +133,12 @@ namespace Networking
             InitIdentityLocally(identity, spawnPacket.OwnerId, spawnPacket.NetworkIdentityId, spawnPacket.SpawnParams);
         }
 
-        private protected virtual void ParseBroadcastPacket(BroadcastPacket broadcastPacket, SocketInfo socketInfo)
+        private protected virtual void ParseBroadcastPacket(BroadcastPacket broadcastPacket, EndPointId endPointId, SocketInfo socketInfo)
         {
             ParseMethodPacket(broadcastPacket, socketInfo);
         }
 
-        private protected virtual void ParseCommandPacket(CommandPacket commandPacket, SocketInfo socketInfo)
+        private protected virtual void ParseCommandPacket(CommandPacket commandPacket, EndPointId endPointId, SocketInfo socketInfo)
         {
             ParseMethodPacket(commandPacket, socketInfo);
         }
@@ -217,13 +187,13 @@ namespace Networking
             return null;
         }
 
-        protected virtual void InitIdentityLocally(NetworkIdentity identity, int ownerID, int id, params object[] valuesByFields)
+        protected virtual void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerId, IdentityId id, params object[] valuesByFields)
         {
             identity.NetworkBehavior = this;
-            identity.ownerId = ownerID;
-            identity.id = id;
-            identity.hasAuthority = ownerID == this.id;
-            identity.isServerAuthority = ownerID == serverPort;
+            identity.OwnerId = ownerId;
+            identity.Id = id;
+            identity.hasAuthority = ownerId == this.localEndPointId;
+            identity.isServerAuthority = ownerId == serverEndPointId;
             if (valuesByFields != null && valuesByFields.Length != 0)
             {
                 Dictionary<string, string> valuesByFieldsDict = valuesByFields.Select(v => v.ToString().Split('+')).ToDictionary(k => k[0], v => v[1]);
@@ -249,11 +219,11 @@ namespace Networking
             Dictionary<string, string> dic = members.ToDictionary(p => p.Name.ToString(), p =>
                 (p is FieldInfo) ?
             typeof(NetworkIdentity).IsAssignableFrom(((FieldInfo)p).FieldType) ?
-            ((FieldInfo)p).GetValue(obj) != null ? (((FieldInfo)p).GetValue(obj) as NetworkIdentity).id.ToString() : "null" :
+            ((FieldInfo)p).GetValue(obj) != null ? (((FieldInfo)p).GetValue(obj) as NetworkIdentity).Id.ToString() : "null" :
             ((FieldInfo)p).GetValue(obj).ToString() :
 
             typeof(NetworkIdentity).IsAssignableFrom(((PropertyInfo)p).PropertyType) ? 
-            ((PropertyInfo)p).GetValue(obj) != null ? (((PropertyInfo)p).GetValue(obj) as NetworkIdentity).id.ToString() : "null" :
+            ((PropertyInfo)p).GetValue(obj) != null ? (((PropertyInfo)p).GetValue(obj) as NetworkIdentity).Id.ToString() : "null" :
             ((PropertyInfo)p).GetValue(obj).ToString()
             );
             return dic;
@@ -278,20 +248,20 @@ namespace Networking
                 });
         }
     
-        public NetworkIdentity GetNetworkIdentityById(int id)
+        public NetworkIdentity GetNetworkIdentityById(IdentityId identityId)
         {
-            if (!NetworkIdentity.entities.TryGetValue(id, out NetworkIdentity identity))
+            if (!NetworkIdentity.entities.TryGetValue(identityId, out NetworkIdentity identity))
             {
-                PrintWarning("no NetworkIdentity with id " + id + " was found.");
+                PrintWarning("no NetworkIdentity with id " + identityId.Id + " was found.");
                 return null;
             }
             return identity;
         }
 
-        internal static int GetIdByIpAndPort(string ip, int port)
-        {
-            return int.Parse(ip.Replace(".", "") + port.ToString());
-        }
+        //internal static int GetIdByIpAndPort(string ip, int port)
+        //{
+        //    return int.Parse(ip.Replace(".", "") + port.ToString());
+        //}
 
         internal static void Print(object[] s)
         {
