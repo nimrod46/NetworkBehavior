@@ -178,6 +178,10 @@ namespace Networking
                     OnInvokeBrodcastMethodMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray());
                 });
             }
+            else
+            {
+                NetworkBehavior.PrintWarning("No method with name: {0} was not found", methodName);
+            }
         }
 
         public void InvokeBroadcastMethodNetworkly(string methodName, params object[] args)
@@ -210,6 +214,10 @@ namespace Networking
                     }
                     OnInvokeCommandMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray(), targetId);
                 });
+            }
+            else
+            {
+                NetworkBehavior.PrintWarning("No method with name: {0} was not found", methodName);
             }
         }
 
@@ -244,6 +252,10 @@ namespace Networking
                     }
                     OnInvokeLocationNetworkly.Invoke(this, networkInterface, locationName, value);
                 });
+            }
+            else
+            {
+                NetworkBehavior.PrintWarning("No location with name: {0} was not found", locationName);
             }
         }
 
@@ -318,6 +330,10 @@ namespace Networking
             if (identity.methodsByClass.TryGetValue(methodPacket.MethodName, out NetworkMethodExecuter memberExecuter))
             {
                 memberExecuter.InvokeMemberFromNetwork(identity, false, methodPacket.MethodArgs);
+            }
+            else
+            {
+                NetworkBehavior.PrintWarning("No location with name: {0} was not found", methodPacket.MethodName);
             }
         }
 

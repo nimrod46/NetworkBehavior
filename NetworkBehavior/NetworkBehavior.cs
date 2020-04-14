@@ -284,9 +284,9 @@ namespace Networking
             }
         }
 
-        internal static void PrintWarning(string message)
+        internal static void PrintWarning(string message, params string[] parameters)
         {
-            Console.Error.WriteLine(WARNING_MESSAGEP_REFIX + message);
+            Console.Error.WriteLine(WARNING_MESSAGEP_REFIX + message, parameters);
         }
     }
 }

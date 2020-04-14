@@ -179,6 +179,53 @@ namespace Networking
             }
         }
 
+        protected override void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs)
+        {
+            if (!IsRunning)
+            {
+                throw new Exception("No connection exist!");
+            }
+
+            BroadcastPacket packet;
+            packet = new BroadcastPacket(networkIdentity.Id, methodName, methodArgs);
+            ParseBroadcastPacket(packet, EndPointId.InvalidIdentityId, new SocketInfo(null, serverPort, networkInterface));
+        }
+
+        protected override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, EndPointId? targetId = null)
+        { 
+            if (!IsRunning)
+            {
+                throw new Exception("No connection exist!");
+            }
+            targetId ??= networkIdentity.OwnerId;
+            CommandPacket packet;
+            packet = new CommandPacket(networkIdentity.Id, methodName, methodArgs);
+            SendPacketToAUser(packet, networkInterface, (EndPointId)targetId);
+        }
+
+        protected override void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue)
+        {
+            if (!IsRunning)
+            {
+                throw new Exception("No connection exist!");
+            }
+
+            SyncVarPacket packet;
+            packet = new SyncVarPacket(networkIdentity.Id, locationName, locationValue);
+            BroadcastPacket(packet, networkInterface, clientsBeforeSync.ToArray());
+        }
+
+        public void SendLobbyInfo(EndPointId endPointId, string data)
+        {
+            if (!IsRunning)
+            {
+                throw new Exception("No connection exist!");
+            }
+
+            LobbyInfoPacket packet = new LobbyInfoPacket(data);
+            BroadcastPacket(packet, NetworkInterfaceType.TCP, endPointId);
+        }
+
         internal void DirectBroadcast(object[] args, params EndPointId[] clientsId)
         {
             lock (syncObj)
@@ -246,52 +293,6 @@ namespace Networking
         private void Server_connectionAcceptedEvent(EndPointId endPointId, long ping)
         {
             clientsBeforeSync.Add(endPointId);
-        }
-        protected override void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs)
-        {
-            if (!IsRunning)
-            {
-                throw new Exception("No connection exist!");
-            }
-
-            MethodPacket packet;
-            packet = new BroadcastPacket(networkIdentity.Id, methodName, methodArgs);
-            BroadcastPacket(packet, networkInterface, clientsBeforeSync.ToArray());
-        }
-
-        protected override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, EndPointId? targetId = null)
-        {
-            if (!IsRunning)
-            {
-                throw new Exception("No connection exist!");
-            }
-            targetId = targetId ?? networkIdentity.OwnerId;
-            CommandPacket packet;
-            packet = new CommandPacket(networkIdentity.Id, methodName, methodArgs);
-            SendPacketToAUser(packet, networkInterface, (EndPointId) targetId);
-        }
-
-        protected override void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue)
-        {
-            if (!IsRunning)
-            {
-                throw new Exception("No connection exist!");
-            }
-
-            SyncVarPacket packet;
-            packet = new SyncVarPacket(networkIdentity.Id, locationName, locationValue);
-            BroadcastPacket(packet, networkInterface, clientsBeforeSync.ToArray());
-        }
-
-        public void SendLobbyInfo(EndPointId endPointId, string data)
-        {
-            if (!IsRunning)
-            {
-                throw new Exception("No connection exist!");
-            }
-
-            LobbyInfoPacket packet = new LobbyInfoPacket(data);
-            BroadcastPacket(packet, NetworkInterfaceType.TCP, endPointId);
         }
 
         private void ClientDsiconnected(EndPointId id)

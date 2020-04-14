@@ -114,10 +114,11 @@ namespace Networking
             {
                 throw new Exception("No connection exist!");
             }
-            
-            MethodPacket packet;
+
+            BroadcastPacket packet;
             packet = new BroadcastPacket(networkIdentity.Id, methodName, methodArgs);
             Send(packet, networkInterface);
+            ParseBroadcastPacket(packet, localEndPointId, new SocketInfo(null, -1, networkInterface));
         }
         protected override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, EndPointId? targetId = null)
         {
