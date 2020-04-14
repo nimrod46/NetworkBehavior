@@ -13,26 +13,36 @@ namespace Networking
 {
     internal class NetworkLocationExecuter : NetworkMemberExecuter
     {
-        readonly LocationInfo location;
+        internal LocationInfo Location { get; }
+
         internal NetworkLocationExecuter(LocationInfo location)
         {
-            this.location = location;
+            this.Location = location;
         }
+
 
         internal override void InvokeMemberFromNetwork(NetworkIdentity networkIdentity, bool shouldInvokeSynchronously, params object[] args)
         {
             InvokeMemberFromNetwork(() =>
             {
                 var v = args[0];
-                if (typeof(NetworkIdentity).IsAssignableFrom(location.LocationType))
+                if (typeof(NetworkIdentity).IsAssignableFrom(Location.LocationType))
                 {
-                    v = NetworkIdentity.entities[IdentityId.FromLong(long.Parse(v + ""))];
+                    if (NetworkIdentity.entities.TryGetValue(IdentityId.FromLong(long.Parse(v + "")), out NetworkIdentity networkIdentityArg))
+                    {
+                        v = networkIdentityArg;
+                    }
+                    else
+                    {
+                        NetworkBehavior.PrintWarning("no NetworkIdentity with id {0} was found.", v.ToString());
+                        return;
+                    }
                 }
                 else
                 {
-                    v = Convert.ChangeType(v, location.LocationType);
+                    v = Convert.ChangeType(v, Location.LocationType);
                 }
-                location.SetValue(networkIdentity, v);
+                Location.SetValue(networkIdentity, v);
             }, shouldInvokeSynchronously);
         }
     }

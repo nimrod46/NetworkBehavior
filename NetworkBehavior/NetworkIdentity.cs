@@ -119,7 +119,6 @@ namespace Networking
             {
                 NetworkBehavior.classes.Add(GetType().FullName, GetType());
             }
-            isUsedAsVar = prioritiesIdintities.Any(t => t.IsAssignableFrom(GetType()));
             foreach (MethodBase method in GetType().GetMethods(bindingFlags))
             {
                 try
@@ -132,7 +131,7 @@ namespace Networking
                 }
             }
 
-            foreach (MemberInfo member in GetType().GetFields(bindingFlags).Cast<MemberInfo>().Concat(GetType().GetProperties(bindingFlags)).Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToList())
+            foreach (MemberInfo member in GetSyncVars())
             {
                 LocationInfo location = null;
                 if (member is FieldInfo)
@@ -145,11 +144,13 @@ namespace Networking
                 }
                 if (typeof(NetworkIdentity).IsAssignableFrom(location.LocationType))
                 {
-                    prioritiesIdintities.Add(location.LocationType);
+                    if (!prioritiesIdintities.Contains(location.LocationType)) {
+                        prioritiesIdintities.Add(location.LocationType);
+                    }
                 }
                 locationByClass.Add(member.Name, new NetworkLocationExecuter(location));
             }
-
+            isUsedAsVar = prioritiesIdintities.Any(t => t.IsAssignableFrom(GetType()));
         }
 
         public void InvokeBroadcastMethodNetworkly(string methodName, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP, params object[] args)
@@ -337,17 +338,28 @@ namespace Networking
             }
         }
 
+        internal List<MemberInfo> GetSyncVars()
+        {
+            return GetType().GetFields(bindingFlags).Cast<MemberInfo>().Concat(GetType().GetProperties(bindingFlags)).Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToList();
+        }
+
         public int CompareTo(NetworkIdentity other)
         {
-            if(isUsedAsVar == other.isUsedAsVar)
+            if(other.GetType() == GetType())
             {
                 return 0;
             }
-            else if(isUsedAsVar)
+
+            if(!isUsedAsVar)
             {
-                return -1;
+                return 1;
             }
-            return 1;
+
+            if (isUsedAsVar == other.isUsedAsVar)
+            {
+                return other.locationByClass.Values.Any(l => GetType().IsAssignableFrom(l.Location.GetType())) ? -1 : 1;
+            }
+            return -1;
         }
     }
 }

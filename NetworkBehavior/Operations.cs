@@ -51,13 +51,14 @@ namespace Networking
                     newArgs = int.Parse(value + "");
                     break;
                 default:
-                    if(NetworkIdentity.entities.Keys.Contains(IdentityId.FromLong(long.Parse(value + ""))))
+                    if(NetworkIdentity.entities.TryGetValue(IdentityId.FromLong(long.Parse(value + "")), out NetworkIdentity networkIdentity))
                     {
-                        newArgs = NetworkIdentity.entities[IdentityId.FromLong(long.Parse(value + ""))];
+                        newArgs = networkIdentity;
                     }
                     else
                     {
-                        throw new Exception("No network identity found with id of: " + value);
+                        NetworkBehavior.PrintWarning("no NetworkIdentity with id {0} was found.", value.ToString());
+                        newArgs = null;
                     }
                     break;
             }

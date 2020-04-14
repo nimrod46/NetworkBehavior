@@ -157,7 +157,7 @@ namespace Networking
 
         private void Synchronize(EndPointId endPointId, EndPoint endPoint)
         {
-            lock (syncObj)
+            lock (clients)
             {
                 Console.WriteLine("New player at: " + endPointId);
                 SpawnObjectPacket spawnPacket;
@@ -228,7 +228,7 @@ namespace Networking
 
         internal void DirectBroadcast(object[] args, params EndPointId[] clientsId)
         {
-            lock (syncObj)
+            lock (clients)
             {
                 foreach (var client in clients)
                 {

@@ -27,7 +27,15 @@ namespace Networking
                 var v = args[i];
                 if (typeof(NetworkIdentity).IsAssignableFrom(item.ParameterType))
                 {
-                    v = NetworkIdentity.entities[IdentityId.FromLong(long.Parse(v + ""))];
+                    if (NetworkIdentity.entities.TryGetValue(IdentityId.FromLong(long.Parse(v + "")), out NetworkIdentity networkIdentityArg))
+                    {
+                        v = networkIdentityArg;
+                    }
+                    else
+                    {
+                        NetworkBehavior.PrintWarning("no NetworkIdentity with id {0} was found.", v.ToString());
+                        return;
+                    }
                 }
                 else
                 {
