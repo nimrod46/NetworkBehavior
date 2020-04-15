@@ -103,6 +103,7 @@ namespace Networking
 
         public EndPointId OwnerId { get; set; }
         public IdentityId Id { get; set; }
+        public bool IsDestroyed { get; set; }
 
         public NetworkBehavior NetworkBehavior;
         public bool isServerAuthority = false;
@@ -110,11 +111,11 @@ namespace Networking
         public bool isInServer = false;
         public bool hasInitialized = false;
         public bool hasFieldsBeenInitialized = false;
-      
         internal bool isUsedAsVar;
 
         public NetworkIdentity()
         {
+            IsDestroyed = false;
             if (!NetworkBehavior.classes.ContainsKey(GetType().FullName))
             {
                 NetworkBehavior.classes.Add(GetType().FullName, GetType());
@@ -286,12 +287,14 @@ namespace Networking
         {
             OnBeginSynchronization?.Invoke();
         }
-        
+
         public void Destroy()
         {
-            InvokeBroadcastMethodNetworkly(nameof(Destroy));
-            OnDestroyEvent?.Invoke(this);
-            entities.Remove(Id);
+            if (!IsDestroyed)
+            {
+                IsDestroyed = true;
+                OnDestroyEvent?.Invoke(this);
+            }
         }
 
         //public void SetAuthority(EndPointId newOwnerId)

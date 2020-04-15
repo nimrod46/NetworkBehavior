@@ -166,6 +166,8 @@ namespace Networking
                 clients.Add(endPointId, endPoint);
                 foreach (NetworkIdentity i in identities)
                 {
+                    if(i.IsDestroyed) { continue; }
+
                     Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(i);
                     var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
                     spawnPacket = new SpawnObjectPacket(GetNetworkClassTypeByName(i.GetType().FullName), i.Id, i.OwnerId, args); //Spawn all existing clients in the remote client
@@ -310,7 +312,7 @@ namespace Networking
                 }
                 foreach (NetworkIdentity entity in entitiesToDestroy)
                 {
-                    entity.Destroy();
+                    entity.InvokeBroadcastMethodNetworkly(nameof(entity.Destroy));
                 }
             }
         }
