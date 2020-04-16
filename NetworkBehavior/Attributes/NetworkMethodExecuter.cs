@@ -25,22 +25,7 @@ namespace Networking
             foreach (ParameterInfo item in method.GetParameters())
             {
                 var v = args[i];
-                if (typeof(NetworkIdentity).IsAssignableFrom(item.ParameterType))
-                {
-                    if (NetworkIdentity.entities.TryGetValue(IdentityId.FromLong(long.Parse(v + "")), out NetworkIdentity networkIdentityArg))
-                    {
-                        v = networkIdentityArg;
-                    }
-                    else
-                    {
-                        NetworkBehavior.PrintWarning("no NetworkIdentity with id {0} was found.", v.ToString());
-                        return;
-                    }
-                }
-                else
-                {
-                    v = Convert.ChangeType(v, item.ParameterType);
-                }
+                v = Operations.GetValueAsObject(item.ParameterType, v);
                 args[i] = v;
                 i++;
             }

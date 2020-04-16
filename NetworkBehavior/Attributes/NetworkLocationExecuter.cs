@@ -26,22 +26,7 @@ namespace Networking
             InvokeMemberFromNetwork(() =>
             {
                 var v = args[0];
-                if (typeof(NetworkIdentity).IsAssignableFrom(Location.LocationType))
-                {
-                    if (NetworkIdentity.entities.TryGetValue(IdentityId.FromLong(long.Parse(v + "")), out NetworkIdentity networkIdentityArg))
-                    {
-                        v = networkIdentityArg;
-                    }
-                    else
-                    {
-                        NetworkBehavior.PrintWarning("no NetworkIdentity with id {0} was found.", v.ToString());
-                        return;
-                    }
-                }
-                else
-                {
-                    v = Convert.ChangeType(v, Location.LocationType);
-                }
+                v = Operations.GetValueAsObject(Location.LocationType, v);
                 Location.SetValue(networkIdentity, v);
             }, shouldInvokeSynchronously);
         }

@@ -19,11 +19,6 @@ namespace Networking
 
         internal NetworkMemberExecuter()
         {
-            //if (networkAttributes.ContainsKey(memberName))
-            //{
-            //    throw new Exception("NetworkAttribute: Duplicate member name: " + memberName);
-            //}
-            //networkAttributes.Add(memberName, networkAttribute);
             invokedFromNetwork = false;
         }
 
@@ -40,14 +35,7 @@ namespace Networking
                 {
                     if (!networkIdentityInstance.hasInitialized) return;
 
-                    //if (!networkIdentityInstance.hasAuthority && !networkIdentityInstance.isInServer)
-                    //{
-                    //    NetworkBehavior.PrintWarning("NetworkAttribute:InvokeNetworkly was called on none authority identity");
-                    //}
-                    //else
-                    {
-                        invokeNetworkly?.Invoke();
-                    }
+                    invokeNetworkly?.Invoke();
                 }
             }
         }
@@ -81,14 +69,5 @@ namespace Networking
         }
 
         internal abstract void InvokeMemberFromNetwork(NetworkIdentity networkIdentity, bool shouldInvokeSynchronously, params object[] args);
-
-        //internal static T GetNetworkAttributeMemberByMemberName(string memberName)
-        //{
-        //    if (!networkAttributes.TryGetValue(memberName, out T networkAttribute))
-        //    { 
-        //        throw new Exception("NetworkAttribute: No member with the name: " + memberName + " was found");
-        //    }
-        //    return networkAttribute;      
-        //}
     }
 }

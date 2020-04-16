@@ -34,7 +34,6 @@ namespace Networking
             client.OnConnectionLostEvent += Client_serverDisconnectedEvent;
             if (client.Connect(out long pingMs, out EndPointId endPointId))
             {
-                base.localEndPointId = endPointId;
                 Start(); 
                 Console.WriteLine("Connection established with: " + pingMs + " ping ms");
                 IsConnected = true;
@@ -71,7 +70,9 @@ namespace Networking
             switch (packetId)
             {
                 case PacketId.InitiateDircetInterface:
-                    DircetInterfaceInitiatingPacket initiatingPacket = new DircetInterfaceInitiatingPacket(localEndPointId);
+                    InitiateDircetInterfacePacket initiateDircetInterfacePacket = new InitiateDircetInterfacePacket(args.ToList());
+                    localEndPointId = initiateDircetInterfacePacket.ClientId;
+                    DircetInterfaceInitiatingPacket initiatingPacket = new DircetInterfaceInitiatingPacket(initiateDircetInterfacePacket.ClientId);
                     Send(initiatingPacket, NetworkInterfaceType.UDP);
                     break;
                 default:

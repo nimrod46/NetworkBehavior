@@ -85,13 +85,13 @@ namespace Networking
         internal static event InvokeLocationNetworklyEvent OnInvokeLocationNetworkly;
         
         public static SortedList<IdentityId, NetworkIdentity> entities = new SortedList<IdentityId, NetworkIdentity>();
+        internal static Dictionary<Type, Dictionary<string, NetworkMethodExecuter>> methodsByType = new Dictionary<Type, Dictionary<string, NetworkMethodExecuter>>();
+        internal static Dictionary<Type, Dictionary<string, NetworkLocationExecuter>> locationByType = new Dictionary<Type, Dictionary<string, NetworkLocationExecuter>>();
         internal static List<Type> prioritiesIdintities = new List<Type>();
         internal static readonly char packetSpiltter = '¥';
         internal static readonly char argsSplitter = '|';
         internal static IdentityId lastId = IdentityId.ZeroIdentityId;
 
-        internal Dictionary<string, NetworkMethodExecuter> methodsByClass = new Dictionary<string, NetworkMethodExecuter>();
-        internal Dictionary<string, NetworkLocationExecuter> locationByClass = new Dictionary<string, NetworkLocationExecuter>();
         public delegate void NetworkInitialize();
         public event NetworkInitialize OnNetworkInitializeEvent;
         public delegate void HasLocalAuthorityInitialize();
@@ -120,70 +120,34 @@ namespace Networking
             {
                 NetworkBehavior.classes.Add(GetType().FullName, GetType());
             }
-            foreach (MethodBase method in GetType().GetMethods(bindingFlags))
-            {
-                try
-                {
-                    methodsByClass.Add(method.Name + ":" + method.GetParameters().Length, new NetworkMethodExecuter(method));
-                }
-                catch (Exception)
-                {
-                    //NetworkBehavior.PrintWarning("method overload named: " + method.Name);
-                }
-            }
 
-            foreach (MemberInfo member in GetSyncVars())
-            {
-                LocationInfo location = null;
-                if (member is FieldInfo)
-                {
-                    location = new LocationInfo(member as FieldInfo);
-                }
-                else if (member is PropertyInfo)
-                {
-                    location = new LocationInfo(member as PropertyInfo);
-                }
-                if (typeof(NetworkIdentity).IsAssignableFrom(location.LocationType))
-                {
-                    if (!prioritiesIdintities.Contains(location.LocationType)) {
-                        prioritiesIdintities.Add(location.LocationType);
-                    }
-                }
-                locationByClass.Add(member.Name, new NetworkLocationExecuter(location));
-            }
+            RegisterMethodsAndLocations();
+
             isUsedAsVar = prioritiesIdintities.Any(t => t.IsAssignableFrom(GetType()));
+
         }
 
         public void InvokeBroadcastMethodNetworkly(string methodName, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP, params object[] args)
         {
-            methodName = methodName + ":" + args.Length;
-            if (methodsByClass.TryGetValue(methodName, out NetworkMethodExecuter networkMemberExecuter))
+            if (methodsByType.TryGetValue(GetType(), out Dictionary<string, NetworkMethodExecuter> d))
             {
-                networkMemberExecuter.InvokeMemberFromLocal(this, () =>
+                methodName = methodName + ":" + args.Length;
+                if (d.TryGetValue(methodName, out NetworkMethodExecuter networkMemberExecuter))
                 {
-                    List<object> methodArgs = new List<object>();
-                    foreach (object o in args)
+                    networkMemberExecuter.InvokeMemberFromLocal(this, () =>
                     {
-                        if (o == null)
+                        List<object> methodArgs = new List<object>();
+                        foreach (object o in args)
                         {
-                            methodArgs.Add("null");
+                            methodArgs.Add(Operations.GetObjectAsValue(o));
+
                         }
-                        else if (o is NetworkIdentity)
-                        {
-                            methodArgs.Add((o as NetworkIdentity).Id.ToString());
-                        }
-                        else
-                        {
-                            methodArgs.Add(o.ToString());
-                        }
-                    }
-                    OnInvokeBrodcastMethodMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray());
-                });
+                        OnInvokeBrodcastMethodMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray());
+                    });
+                    return;
+                }
             }
-            else
-            {
-                NetworkBehavior.PrintWarning("No method with name: {0} was not found", methodName);
-            }
+            NetworkBehavior.PrintWarning("No method with name: {0} was not found", methodName);
         }
 
         public void InvokeBroadcastMethodNetworkly(string methodName, params object[] args)
@@ -193,34 +157,24 @@ namespace Networking
 
         public void InvokeCommandMethodNetworkly(string methodName, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP, EndPointId? targetId = null, params object[] args)
         {
-            methodName = methodName + ":" + args.Length;
-            if (methodsByClass.TryGetValue(methodName, out NetworkMethodExecuter networkMemberExecuter))
+            if (methodsByType.TryGetValue(GetType(), out Dictionary<string, NetworkMethodExecuter> d))
             {
-                networkMemberExecuter.InvokeMemberFromLocal(this, () =>
+                methodName = methodName + ":" + args.Length;
+                if (d.TryGetValue(methodName, out NetworkMethodExecuter networkMemberExecuter))
                 {
-                    List<object> methodArgs = new List<object>();
-                    foreach (object o in args)
+                    networkMemberExecuter.InvokeMemberFromLocal(this, () =>
                     {
-                        if (o == null)
+                        List<object> methodArgs = new List<object>();
+                        foreach (object o in args)
                         {
-                            methodArgs.Add("null");
+                            methodArgs.Add(Operations.GetObjectAsValue(o));
                         }
-                        else if (o is NetworkIdentity)
-                        {
-                            methodArgs.Add((o as NetworkIdentity).Id.ToString());
-                        }
-                        else
-                        {
-                            methodArgs.Add(o.ToString());
-                        }
-                    }
-                    OnInvokeCommandMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray(), targetId);
-                });
+                        OnInvokeCommandMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray(), targetId);
+                    });
+                    return;
+                }
             }
-            else
-            {
-                NetworkBehavior.PrintWarning("No method with name: {0} was not found", methodName);
-            }
+            NetworkBehavior.PrintWarning("No method with name: {0} was not found", methodName);
         }
 
         public void InvokeCommandMethodNetworkly(string methodName, EndPointId? targetId, params object[] args)
@@ -240,30 +194,18 @@ namespace Networking
 
         public void InvokeSyncVarNetworkly(string locationName, object value, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP)
         {
-            if (locationByClass.TryGetValue(locationName, out NetworkLocationExecuter networkMemberExecuter))
+            if (locationByType.TryGetValue(GetType(), out Dictionary<string, NetworkLocationExecuter> d))
             {
-                networkMemberExecuter.InvokeMemberFromLocal(this, () =>
+                if (d.TryGetValue(locationName, out NetworkLocationExecuter networkMemberExecuter))
                 {
-                    if (value is NetworkIdentity)
+                    networkMemberExecuter.InvokeMemberFromLocal(this, () =>
                     {
-                        value = ((value as NetworkIdentity).Id.ToString());
-                    }
-                    else
-                    {
-                        value = value.ToString();
-                    }
-                    OnInvokeLocationNetworkly.Invoke(this, networkInterface, locationName, value);
-                });
+                        OnInvokeLocationNetworkly.Invoke(this, networkInterface, locationName, Operations.GetObjectAsValue(value));
+                    });
+                    return;
+                }
             }
-            else
-            {
-                NetworkBehavior.PrintWarning("No location with name: {0} was not found", locationName);
-            }
-        }
-
-        public void UpdateSyncVars()
-        {
-          
+            NetworkBehavior.PrintWarning("No location with name: {0} was not found", locationName);
         }
 
         internal void PreformEvents()
@@ -323,27 +265,48 @@ namespace Networking
 
         internal static void NetworkSyncVarInvoke(NetworkIdentity identity, SyncVarPacket syncVarPacket)
         {
-            if(identity.locationByClass.TryGetValue(syncVarPacket.LocationName, out NetworkLocationExecuter memberExecuter))
+            if (locationByType.TryGetValue(identity.GetType(), out Dictionary<string, NetworkLocationExecuter> d))
             {
-                memberExecuter.InvokeMemberFromNetwork(identity, false, syncVarPacket.LocationValue);
+                if (d.TryGetValue(syncVarPacket.LocationName, out NetworkLocationExecuter memberExecuter))
+                {
+                    memberExecuter.InvokeMemberFromNetwork(identity, false, syncVarPacket.LocationValue);
+                    return;
+                }
             }
+            NetworkBehavior.PrintWarning("No location with name: {0} was not found", syncVarPacket.LocationName);
         }
 
         internal static void NetworkMethodInvoke(NetworkIdentity identity, MethodPacket methodPacket)
         {
-            if (identity.methodsByClass.TryGetValue(methodPacket.MethodName, out NetworkMethodExecuter memberExecuter))
+            if (methodsByType.TryGetValue(identity.GetType(), out Dictionary<string, NetworkMethodExecuter> d))
             {
-                memberExecuter.InvokeMemberFromNetwork(identity, false, methodPacket.MethodArgs);
+                if (d.TryGetValue(methodPacket.MethodName, out NetworkMethodExecuter memberExecuter))
+                {
+                    memberExecuter.InvokeMemberFromNetwork(identity, false, methodPacket.MethodArgs);
+                    return;
+                }
             }
-            else
-            {
-                NetworkBehavior.PrintWarning("No location with name: {0} was not found", methodPacket.MethodName);
-            }
+            NetworkBehavior.PrintWarning("No location with name: {0} was not found", methodPacket.MethodName);
         }
 
-        internal List<MemberInfo> GetSyncVars()
+    internal List<MemberInfo> GetSyncVars()
         {
             return GetType().GetFields(bindingFlags).Cast<MemberInfo>().Concat(GetType().GetProperties(bindingFlags)).Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToList();
+        }
+
+        internal static NetworkIdentity GetNetworkIdentityById(IdentityId identityId)
+        {
+            if (!NetworkIdentity.entities.TryGetValue(identityId, out NetworkIdentity identity))
+            {
+                NetworkBehavior.PrintWarning("no NetworkIdentity with id {0} was found.", identityId);
+                return null;
+            }
+            return identity;
+        }
+
+        internal static NetworkIdentity GetNetworkIdentityById(object identityId)
+        {
+            return GetNetworkIdentityById(IdentityId.FromLong(long.Parse(identityId.ToString())));
         }
 
         public int CompareTo(NetworkIdentity other)
@@ -360,9 +323,55 @@ namespace Networking
 
             if (isUsedAsVar == other.isUsedAsVar)
             {
-                return other.locationByClass.Values.Any(l => GetType().IsAssignableFrom(l.Location.GetType())) ? -1 : 1;
+                return locationByType[other.GetType()].Values.Any(l => GetType().IsAssignableFrom(l.Location.GetType())) ? -1 : 1;
             }
             return -1;
+        }
+
+        private void RegisterMethodsAndLocations()
+        {
+            if (!methodsByType.ContainsKey(GetType()))
+            {
+                Dictionary<string, NetworkMethodExecuter> methodsByName = new Dictionary<string, NetworkMethodExecuter>();
+                foreach (MethodBase method in GetType().GetMethods(bindingFlags))
+                {
+                    try
+                    {
+                        methodsByName.Add(method.Name + ":" + method.GetParameters().Length, new NetworkMethodExecuter(method));
+                    }
+                    catch (Exception)
+                    {
+                        // NetworkBehavior.PrintWarning("method overload named: " + method.Name);
+                    }
+                }
+                methodsByType.Add(GetType(), methodsByName);
+            }
+
+            if (!locationByType.ContainsKey(GetType()))
+            {
+                Dictionary<string, NetworkLocationExecuter> locationsByName = new Dictionary<string, NetworkLocationExecuter>();
+                foreach (MemberInfo member in GetSyncVars())
+                {
+                    LocationInfo location = null;
+                    if (member is FieldInfo)
+                    {
+                        location = new LocationInfo(member as FieldInfo);
+                    }
+                    else if (member is PropertyInfo)
+                    {
+                        location = new LocationInfo(member as PropertyInfo);
+                    }
+                    if (typeof(NetworkIdentity).IsAssignableFrom(location.LocationType))
+                    {
+                        if (!prioritiesIdintities.Contains(location.LocationType))
+                        {
+                            prioritiesIdintities.Add(location.LocationType);
+                        }
+                    }
+                    locationsByName.Add(member.Name, new NetworkLocationExecuter(location));
+                }
+                locationByType.Add(GetType(), locationsByName);
+            }
         }
     }
 }

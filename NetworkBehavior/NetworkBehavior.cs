@@ -238,26 +238,16 @@ namespace Networking
                     if (!valuesByFields[p.Name].Equals("null")) {
                         if (p is FieldInfo)
                         {
-                            ((FieldInfo)p).SetValue(obj, Operations.GetValueAsObject(((FieldInfo)p).FieldType.Name, valuesByFields[p.Name]));
+                            ((FieldInfo)p).SetValue(obj, Operations.GetValueAsObject(((FieldInfo)p).FieldType, valuesByFields[p.Name]));
                         }
                         else
                         {
-                            ((PropertyInfo)p).SetValue(obj, Operations.GetValueAsObject(((PropertyInfo)p).PropertyType.Name, valuesByFields[p.Name]));
+                            ((PropertyInfo)p).SetValue(obj, Operations.GetValueAsObject(((PropertyInfo)p).PropertyType, valuesByFields[p.Name]));
                         }
                     }
                 });
         }
-    
-        public NetworkIdentity GetNetworkIdentityById(IdentityId identityId)
-        {
-            if (!NetworkIdentity.entities.TryGetValue(identityId, out NetworkIdentity identity))
-            {
-                PrintWarning("no NetworkIdentity with id " + identityId.Id + " was found.");
-                return null;
-            }
-            return identity;
-        }
-
+   
         //internal static int GetIdByIpAndPort(string ip, int port)
         //{
         //    return int.Parse(ip.Replace(".", "") + port.ToString());
@@ -284,7 +274,7 @@ namespace Networking
             }
         }
 
-        internal static void PrintWarning(string message, params string[] parameters)
+        internal static void PrintWarning(string message, params object[] parameters)
         {
             Console.Error.WriteLine(WARNING_MESSAGEP_REFIX + message, parameters);
         }

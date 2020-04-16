@@ -175,7 +175,7 @@ namespace Networking
                 }
                 //Console.WriteLine("Spawn all existing clients");
 
-                InitiateDircetInterfacePacket initiateDircetInterface = new InitiateDircetInterfacePacket();//Initiate dircet interface with the client
+                InitiateDircetInterfacePacket initiateDircetInterface = new InitiateDircetInterfacePacket(endPointId);//Initiate dircet interface with the client
                 SendPacketToAUser(initiateDircetInterface, NetworkInterfaceType.TCP, endPointId);
                 //Console.WriteLine("Initiating dircet interface with the client");             
             }
