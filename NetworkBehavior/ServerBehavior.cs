@@ -343,7 +343,7 @@ namespace Networking
                 Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(identity);
                 args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
             }
-            identity = Activator.CreateInstance(instance) as NetworkIdentity;
+            NetworkIdentity netIdentity = Activator.CreateInstance(instance) as NetworkIdentity;
             EndPointId owner = EndPointId.InvalidIdentityId;
             if (clientId == EndPointId.InvalidIdentityId)
             {
@@ -355,8 +355,8 @@ namespace Networking
             }
             SpawnObjectPacket packet = new SpawnObjectPacket(instance, id, owner, args);
             BroadcastPacket(packet, NetworkInterfaceType.TCP, clientsBeforeSync.ToArray());
-            InitIdentityLocally(identity, owner, id, args);
-            return identity;
+            InitIdentityLocally(netIdentity, owner, id, args);
+            return netIdentity;
         }
     }
 }
