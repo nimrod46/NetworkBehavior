@@ -216,7 +216,6 @@ namespace Networking
             {
                 OnRemoteIdentityInitialize?.Invoke(identity);
             }
-            PrintWarning("Spawend: " + id);
         }
 
         const BindingFlags getBindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic;
