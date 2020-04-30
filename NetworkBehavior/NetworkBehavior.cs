@@ -118,6 +118,11 @@ namespace Networking
             {
                 NetworkIdentity.NetworkSyncVarInvoke(identity, syncVarPacket);
             }
+            else if(socketInfo.NetworkInterface == NetworkInterfaceType.TCP)
+            {
+                PrintWarning("cannot get netIdentity from packet:");
+                Print(syncVarPacket.Data.ToArray());
+            }
         }
 
         private protected virtual void ParseSpawnObjectPacket(SpawnObjectPacket spawnObjectPacket, EndPointId endPointId, SocketInfo socketInfo)
@@ -149,6 +154,11 @@ namespace Networking
             {
                 NetworkIdentity.NetworkMethodInvoke(identity, methodPacket);
             }
+            else if(socketInfo.NetworkInterface == NetworkInterfaceType.TCP)
+            {
+                PrintWarning("cannot get netIdentity from packet:");
+                Print(methodPacket.Data.ToArray());
+            }
         }
 
         private protected bool TryGetNetworkIdentityByPacket(NetworkIdentityBasePacket networkIdentityPacket, out NetworkIdentity identity)
@@ -156,8 +166,6 @@ namespace Networking
             identity = GetNetworkIdentityById(networkIdentityPacket.NetworkIdentityId);
             if (identity == null)
             {
-                PrintWarning("cannot get netIdentity from packet:");
-                Print(networkIdentityPacket.Data.ToArray());
                 return false;
             }
             return true;
@@ -189,7 +197,6 @@ namespace Networking
 
         protected virtual void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerId, IdentityId id, params object[] valuesByFields)
         {
-            identity.NetworkBehavior = this;
             identity.OwnerId = ownerId;
             identity.Id = id;
             identity.hasAuthority = ownerId == this.localEndPointId;
@@ -209,6 +216,7 @@ namespace Networking
             {
                 OnRemoteIdentityInitialize?.Invoke(identity);
             }
+            PrintWarning("Spawend: " + id);
         }
 
         const BindingFlags getBindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic;
@@ -248,11 +256,6 @@ namespace Networking
                 });
         }
    
-        //internal static int GetIdByIpAndPort(string ip, int port)
-        //{
-        //    return int.Parse(ip.Replace(".", "") + port.ToString());
-        //}
-
         internal static void Print(object[] s)
         {
             foreach (object item in s)

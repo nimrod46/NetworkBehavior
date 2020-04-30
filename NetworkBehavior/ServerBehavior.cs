@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 using Networking;
 using NetworkingLib;
 using static Networking.NetworkIdentity;
@@ -12,7 +13,7 @@ using static NetworkingLib.Server;
 namespace Networking
 {
     public class ServerBehavior : NetworkBehavior
-    {
+    {  
         private readonly object syncObj = new object();
         public delegate void ConnectionLobbyAcceptedEventHandler(EndPointId endPointId, long ping);
         public event ConnectionLobbyAcceptedEventHandler OnConnectionLobbyAcceptedEvent;
@@ -202,7 +203,14 @@ namespace Networking
             targetId ??= networkIdentity.OwnerId;
             CommandPacket packet;
             packet = new CommandPacket(networkIdentity.Id, methodName, methodArgs);
-            SendPacketToAUser(packet, networkInterface, (EndPointId)targetId);
+            if (targetId == serverEndPointId)
+            {
+                ParseCommandPacket(packet, serverEndPointId, new SocketInfo("", serverPort, networkInterface));
+            }
+            else
+            {
+                SendPacketToAUser(packet, networkInterface, (EndPointId)targetId);
+            }
         }
 
         protected override void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue)
@@ -330,11 +338,6 @@ namespace Networking
 
         private NetworkIdentity SpawnIdentity(Type instance, EndPointId clientId, NetworkIdentity identity)
         {
-            if (identity != null && identity.hasInitialized)
-            {
-                throw new Exception("Cannot spawn network instance that is already in use");
-            }
-
             NetworkIdentity.lastId++;
             IdentityId id = NetworkIdentity.lastId;
             string[] args = null;
@@ -343,7 +346,7 @@ namespace Networking
                 Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(identity);
                 args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
             }
-            NetworkIdentity netIdentity = Activator.CreateInstance(instance) as NetworkIdentity;
+            identity = Activator.CreateInstance(instance) as NetworkIdentity;
             EndPointId owner = EndPointId.InvalidIdentityId;
             if (clientId == EndPointId.InvalidIdentityId)
             {
@@ -355,8 +358,8 @@ namespace Networking
             }
             SpawnObjectPacket packet = new SpawnObjectPacket(instance, id, owner, args);
             BroadcastPacket(packet, NetworkInterfaceType.TCP, clientsBeforeSync.ToArray());
-            InitIdentityLocally(netIdentity, owner, id, args);
-            return netIdentity;
+            InitIdentityLocally(identity, owner, id, args);
+            return identity;
         }
     }
 }

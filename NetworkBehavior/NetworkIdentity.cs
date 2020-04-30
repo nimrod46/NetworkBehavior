@@ -105,7 +105,6 @@ namespace Networking
         public IdentityId Id { get; set; }
         public bool IsDestroyed { get; set; }
 
-        public NetworkBehavior NetworkBehavior;
         public bool isServerAuthority = false;
         public bool hasAuthority = false;
         public bool isInServer = false;
@@ -298,7 +297,6 @@ namespace Networking
         {
             if (!NetworkIdentity.entities.TryGetValue(identityId, out NetworkIdentity identity))
             {
-                NetworkBehavior.PrintWarning("no NetworkIdentity with id {0} was found.", identityId);
                 return null;
             }
             return identity;
