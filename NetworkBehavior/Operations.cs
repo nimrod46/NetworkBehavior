@@ -10,15 +10,16 @@ namespace Networking
     {
         public static object GetValueAsObject(Type type, object value)
         {
-            if (typeof(NetworkIdentity).IsAssignableFrom(type))
-            {
-                return NetworkIdentity.GetNetworkIdentityById(value);
-            }
-            else if(typeof(Enum).IsAssignableFrom(type))
+            if (typeof(Enum).IsAssignableFrom(type))
             {
                 return Enum.Parse(type, value.ToString());
             }
-            return Convert.ChangeType(value, type);
+            else if (type.IsValueType || typeof(string).IsAssignableFrom(type))
+            {
+                return Convert.ChangeType(value, type);
+            }
+           
+            return NetworkIdentity.GetNetworkIdentityById(value);
         }
 
         public static object GetObjectAsValue(object obj)
