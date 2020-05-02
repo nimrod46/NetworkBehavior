@@ -181,9 +181,9 @@ namespace Networking
             NetworkBehavior.PrintWarning("No method with name: {0} was not found", methodName);
         }
 
-        public void InvokeCommandMethodNetworkly(string methodName, EndPointId? targetId, params object[] args)
+        public void InvokeCommandMethodNetworkly(string methodName, EndPointId targetId, params object[] args)
         {
-            InvokeCommandMethodNetworkly(methodName, NetworkInterfaceType.TCP, targetId, args);
+            InvokeCommandMethodNetworkly(methodName, NetworkInterfaceType.TCP, null, targetId, args);
         }
 
         public void InvokeCommandMethodNetworkly(string methodName, params object[] args)
