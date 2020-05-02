@@ -63,11 +63,11 @@ namespace Networking
             NetworkIdentity.OnInvokeLocationNetworkly += OnInvokeLocationNetworkly; 
         }
 
-        protected abstract void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue);
+        protected abstract void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue, bool? shouldInvokeSynchronously = null);
 
-        protected abstract void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs);
+        protected abstract void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null);
 
-        protected abstract void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, EndPointId? targetId = null);
+        protected abstract void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null);
 
         private protected void ParseArgs(object[] args, EndPointId endPointId, SocketInfo socketInfo)
         {
@@ -116,7 +116,7 @@ namespace Networking
         {
             if (TryGetNetworkIdentityByPacket(syncVarPacket, out NetworkIdentity identity))
             {
-                NetworkIdentity.NetworkSyncVarInvoke(identity, syncVarPacket);
+                NetworkIdentity.NetworkSyncVarInvoke(identity, syncVarPacket, syncVarPacket.ShouldInvokeSynchronously);
             }
             else if(socketInfo.NetworkInterface == NetworkInterfaceType.TCP)
             {
@@ -152,7 +152,7 @@ namespace Networking
         {
             if (TryGetNetworkIdentityByPacket(methodPacket, out NetworkIdentity identity))
             {
-                NetworkIdentity.NetworkMethodInvoke(identity, methodPacket);
+                NetworkIdentity.NetworkMethodInvoke(identity, methodPacket, methodPacket.ShouldInvokeSynchronously);
             }
             else if(socketInfo.NetworkInterface == NetworkInterfaceType.TCP)
             {

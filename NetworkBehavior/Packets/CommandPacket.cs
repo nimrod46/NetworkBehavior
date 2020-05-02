@@ -9,7 +9,7 @@ namespace Networking
 {
     internal class CommandPacket : MethodPacket
     {
-        public CommandPacket(IdentityId id, string methodName, object[] methodArgs) : base(PacketId.Command, id, methodName, methodArgs)
+        public CommandPacket(IdentityId id, string methodName, bool shouldInvokeSynchronously, object[] methodArgs) : base(PacketId.Command, id, methodName, shouldInvokeSynchronously, methodArgs)
         {
 
         }

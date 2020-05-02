@@ -9,10 +9,11 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>NetworkBehavior</RootNamespace>
     <AssemblyName>NetworkBehavior</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -36,8 +37,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51" />
-    <Reference Include="NetworkingLib">
-      <HintPath>..\..\NetworkingLib\NetworkingLib\bin\Debug\netstandard2.0\NetworkingLib.dll</HintPath>
+    <Reference Include="NetworkLib">
+      <HintPath>..\..\NetworkLib\NetworkLib\bin\Debug\NetworkLib.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />

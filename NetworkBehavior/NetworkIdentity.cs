@@ -77,11 +77,11 @@ namespace Networking
 
         const BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic;
 
-        internal delegate void InvokeBrodcastMethodNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs);
+        internal delegate void InvokeBrodcastMethodNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null);
         internal static event InvokeBrodcastMethodNetworklyEvent OnInvokeBrodcastMethodMethodNetworkly;
-        internal delegate void InvokeCommandMethodNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, EndPointId? targetId = null);
+        internal delegate void InvokeCommandMethodNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodNam, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null);
         internal static event InvokeCommandMethodNetworklyEvent OnInvokeCommandMethodNetworkly;
-        internal delegate void InvokeLocationNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue);
+        internal delegate void InvokeLocationNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue, bool? shouldInvokeSynchronously = null);
         internal static event InvokeLocationNetworklyEvent OnInvokeLocationNetworkly;
         
         public static SortedList<IdentityId, NetworkIdentity> entities = new SortedList<IdentityId, NetworkIdentity>();
@@ -126,7 +126,7 @@ namespace Networking
 
         }
 
-        public void InvokeBroadcastMethodNetworkly(string methodName, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP, params object[] args)
+        public void InvokeBroadcastMethodNetworkly(string methodName, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP, bool? shouldInvokeSynchronously = null, params object[] args)
         {
             if (methodsByType.TryGetValue(GetType(), out Dictionary<string, NetworkMethodExecuter> d))
             {
@@ -141,7 +141,7 @@ namespace Networking
                             methodArgs.Add(Operations.GetObjectAsValue(o));
 
                         }
-                        OnInvokeBrodcastMethodMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray());
+                        OnInvokeBrodcastMethodMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray(), shouldInvokeSynchronously);
                     });
                     return;
                 }
@@ -151,10 +151,15 @@ namespace Networking
 
         public void InvokeBroadcastMethodNetworkly(string methodName, params object[] args)
         {
-            InvokeBroadcastMethodNetworkly(methodName, NetworkInterfaceType.TCP, args);
+            InvokeBroadcastMethodNetworkly(methodName, NetworkInterfaceType.TCP, null, args);
         }
 
-        public void InvokeCommandMethodNetworkly(string methodName, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP, EndPointId? targetId = null, params object[] args)
+        public void InvokeBroadcastMethodNetworkly(string methodName, bool shouldInvokeSynchronously, params object[] args)
+        {
+            InvokeBroadcastMethodNetworkly(methodName, NetworkInterfaceType.TCP, shouldInvokeSynchronously, args);
+        }
+
+        public void InvokeCommandMethodNetworkly(string methodName, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null, params object[] args)
         {
             if (methodsByType.TryGetValue(GetType(), out Dictionary<string, NetworkMethodExecuter> d))
             {
@@ -168,7 +173,7 @@ namespace Networking
                         {
                             methodArgs.Add(Operations.GetObjectAsValue(o));
                         }
-                        OnInvokeCommandMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray(), targetId);
+                        OnInvokeCommandMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray(), shouldInvokeSynchronously, targetId);
                     });
                     return;
                 }
@@ -183,12 +188,12 @@ namespace Networking
 
         public void InvokeCommandMethodNetworkly(string methodName, params object[] args)
         {
-            InvokeCommandMethodNetworkly(methodName, NetworkInterfaceType.TCP, null, args);
+            InvokeCommandMethodNetworkly(methodName, NetworkInterfaceType.TCP, args);
         }
 
         public void InvokeCommandMethodNetworkly(string methodName, NetworkInterfaceType networkInterface, params object[] args)
         {
-            InvokeCommandMethodNetworkly(methodName, networkInterface, null, args);
+            InvokeCommandMethodNetworkly(methodName, networkInterface, null, null, args);
         }
 
         public void InvokeSyncVarNetworkly(string locationName, object value, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP)
@@ -262,26 +267,26 @@ namespace Networking
         //    }
         //}
 
-        internal static void NetworkSyncVarInvoke(NetworkIdentity identity, SyncVarPacket syncVarPacket)
+        internal static void NetworkSyncVarInvoke(NetworkIdentity identity, SyncVarPacket syncVarPacket, bool shouldInvokeSynchronously)
         {
             if (locationByType.TryGetValue(identity.GetType(), out Dictionary<string, NetworkLocationExecuter> d))
             {
                 if (d.TryGetValue(syncVarPacket.LocationName, out NetworkLocationExecuter memberExecuter))
                 {
-                    memberExecuter.InvokeMemberFromNetwork(identity, false, syncVarPacket.LocationValue);
+                    memberExecuter.InvokeMemberFromNetwork(identity, shouldInvokeSynchronously, syncVarPacket.LocationValue);
                     return;
                 }
             }
             NetworkBehavior.PrintWarning("No location with name: {0} was not found", syncVarPacket.LocationName);
         }
 
-        internal static void NetworkMethodInvoke(NetworkIdentity identity, MethodPacket methodPacket)
+        internal static void NetworkMethodInvoke(NetworkIdentity identity, MethodPacket methodPacket, bool shouldInvokeSynchronously)
         {
             if (methodsByType.TryGetValue(identity.GetType(), out Dictionary<string, NetworkMethodExecuter> d))
             {
                 if (d.TryGetValue(methodPacket.MethodName, out NetworkMethodExecuter memberExecuter))
                 {
-                    memberExecuter.InvokeMemberFromNetwork(identity, false, methodPacket.MethodArgs);
+                    memberExecuter.InvokeMemberFromNetwork(identity, shouldInvokeSynchronously, methodPacket.MethodArgs);
                     return;
                 }
             }

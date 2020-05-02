@@ -11,20 +11,24 @@ namespace Networking
     {
         public string LocationName { get; private set; }
         public object LocationValue { get; private set; }
+        public bool ShouldInvokeSynchronously { get; private set; }
 
-        internal SyncVarPacket(IdentityId networkIdentityId, string locationName, object locationValue) : base (PacketId.SyncVar, networkIdentityId)
+        internal SyncVarPacket(IdentityId networkIdentityId, string locationName, object locationValue, bool shouldInvokeSynchronously) : base (PacketId.SyncVar, networkIdentityId)
         {
             LocationName = locationName;
             LocationValue = locationValue;
+            ShouldInvokeSynchronously = shouldInvokeSynchronously;
             Data.Add(LocationName);
             Data.Add(LocationValue);
+            Data.Add(ShouldInvokeSynchronously);
         }
 
         internal SyncVarPacket(List<object> args) : base(PacketId.SyncVar, args)
         {
             LocationName = args[0].ToString();
             LocationValue = args[1];
-            args.RemoveRange(0, 2);
+            ShouldInvokeSynchronously = bool.Parse(args[2].ToString());
+            args.RemoveRange(0, 3);
         }
     }
 }

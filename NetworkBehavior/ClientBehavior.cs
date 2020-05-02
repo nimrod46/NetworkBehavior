@@ -109,39 +109,39 @@ namespace Networking
             }
         }
 
-        protected override void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs)
+        protected override void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null)
         {
             if (!IsConnected)
             {
                 throw new Exception("No connection exist!");
             }
-
+            shouldInvokeSynchronously ??= networkInterface == NetworkInterfaceType.TCP;
             BroadcastPacket packet;
-            packet = new BroadcastPacket(networkIdentity.Id, methodName, methodArgs);
+            packet = new BroadcastPacket(networkIdentity.Id, methodName, shouldInvokeSynchronously.Value, methodArgs);
             Send(packet, networkInterface);
             ParseBroadcastPacket(packet, localEndPointId, new SocketInfo(null, -1, networkInterface));
         }
-        protected override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, EndPointId? targetId = null)
+        protected override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null)
         {
             if (!IsConnected)
             {
                 throw new Exception("No connection exist!");
             }
-
+            shouldInvokeSynchronously ??= networkInterface == NetworkInterfaceType.TCP;
             CommandPacket packet;
-            packet = new CommandPacket(networkIdentity.Id, methodName, methodArgs);
+            packet = new CommandPacket(networkIdentity.Id, methodName, shouldInvokeSynchronously.Value, methodArgs);
             Send(packet, networkInterface);
         }
 
-        protected override void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue)
+        protected override void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue, bool? shouldInvokeSynchronously = null)
         {
             if (!IsConnected)
             {
                 throw new Exception("No connection exist!");
             }
-
+            shouldInvokeSynchronously ??= networkInterface == NetworkInterfaceType.TCP;
             SyncVarPacket packet;
-            packet = new SyncVarPacket(networkIdentity.Id, locationName, locationValue);
+            packet = new SyncVarPacket(networkIdentity.Id, locationName, locationValue, shouldInvokeSynchronously.Value);
             Send(packet, networkInterface);
         }
 

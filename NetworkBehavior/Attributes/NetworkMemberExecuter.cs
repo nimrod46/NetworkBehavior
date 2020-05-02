@@ -44,18 +44,21 @@ namespace Networking
         {
             if (shouldInvokeSynchronously)
             {
-                lock (NetworkBehavior.synchronousActions)
+                new Thread(new ThreadStart(() =>
                 {
-                    NetworkBehavior.synchronousActions.Add(() =>
+                    lock (NetworkBehavior.synchronousActions)
                     {
-                        lock (scope)
+                        NetworkBehavior.synchronousActions.Add(() =>
                         {
-                            invokedFromNetwork = true;
-                            action.Invoke();
-                            invokedFromNetwork = false;
-                        }
-                    });
-                }
+                            lock (scope)
+                            {
+                                invokedFromNetwork = true;
+                                action.Invoke();
+                                invokedFromNetwork = false;
+                            }
+                        });
+                    }
+                })).Start();
             }
             else
             {

@@ -9,7 +9,7 @@ namespace Networking
 {
     internal class BroadcastPacket : MethodPacket
     {
-        public BroadcastPacket(IdentityId id, string methodName, object[] methodArgs) : base(PacketId.BroadcastMethod, id, methodName, methodArgs)
+        public BroadcastPacket(IdentityId id, string methodName, bool shouldInvokeSynchronously, object[] methodArgs) : base(PacketId.BroadcastMethod, id, methodName, shouldInvokeSynchronously, methodArgs)
         {
 
         }
