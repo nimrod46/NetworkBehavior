@@ -14,7 +14,7 @@ namespace Networking
     internal abstract class NetworkMemberExecuter
     {
 
-        private object scope = new object();
+        private readonly object scope = new object();
         public bool invokedFromNetwork;
 
         internal NetworkMemberExecuter()
@@ -44,21 +44,15 @@ namespace Networking
         {
             if (shouldInvokeSynchronously)
             {
-                new Thread(new ThreadStart(() =>
+                NetworkBehavior.synchronousActions.Enqueue(() =>
                 {
-                    lock (NetworkBehavior.synchronousActions)
+                    lock (scope)
                     {
-                        NetworkBehavior.synchronousActions.Add(() =>
-                        {
-                            lock (scope)
-                            {
-                                invokedFromNetwork = true;
-                                action.Invoke();
-                                invokedFromNetwork = false;
-                            }
-                        });
+                        invokedFromNetwork = true;
+                        action.Invoke();
+                        invokedFromNetwork = false;
                     }
-                })).Start();
+                });
             }
             else
             {

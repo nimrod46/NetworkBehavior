@@ -68,6 +68,7 @@
     <Compile Include="Packets\MethodPacket.cs" />
     <Compile Include="Packets\NetworkIdentityBasePacket.cs" />
     <Compile Include="Packets\Packet.cs" />
+    <Compile Include="Packets\SyncObjectVars.cs" />
     <Compile Include="Packets\SpawnObjectPacket.cs" />
     <Compile Include="Packets\SpawnPacket.cs" />
     <Compile Include="Packets\SyncVarPacket.cs" />

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -16,6 +17,7 @@ namespace Networking
         Command,
         SyncVar,
         SpawnObject,
+        SyncObjectVars,
         BeginSynchronization,
     }
 
@@ -36,7 +38,7 @@ namespace Networking
     public abstract class NetworkBehavior
     {
         internal const string WARNING_MESSAGEP_REFIX = "NetworkBehavior lib WARNING: ";
-        internal static List<Action> synchronousActions = new List<Action>();
+        internal static ConcurrentQueue<Action> synchronousActions = new ConcurrentQueue<Action>();
         public delegate void LobbyInfoEventHandler(string info);
         public event LobbyInfoEventHandler OnLobbyInfoEvent;
         public delegate void IdentityInitializeEventHandler(NetworkIdentity client);
@@ -102,9 +104,29 @@ namespace Networking
                     SpawnObjectPacket spawnObjectPacket = new SpawnObjectPacket(args.ToList());
                     ParseSpawnObjectPacket(spawnObjectPacket, endPointId, socketInfo);
                     break;
+                case PacketId.SyncObjectVars:
+                    SyncObjectVars syncObjectVars = new SyncObjectVars(args.ToList());
+                    ParseSyncObjectVars(syncObjectVars, endPointId, socketInfo);
+                    break;
                 default:
                     throw new Exception("Invalid packet recived, id: " + args[0]);
             }
+        }
+
+        private protected virtual void ParseSyncObjectVars(SyncObjectVars syncObjectVars, EndPointId endPointId, SocketInfo socketInfo)
+        {
+            if (TryGetNetworkIdentityByPacket(syncObjectVars, out NetworkIdentity identity))
+            {
+                Print(syncObjectVars.SpawnParams);
+                Dictionary<string, string> valuesByFieldsDict = syncObjectVars.SpawnParams.Select(v => v.ToString().Split('+')).ToDictionary(k => k[0], v => v[1]);
+                SetObjectFieldsByValues(identity, valuesByFieldsDict);
+            }
+            else if (socketInfo.NetworkInterface == NetworkInterfaceType.TCP)
+            {
+                PrintWarning("cannot get network identity from packet:");
+                Print(syncObjectVars.Data.ToArray());
+            }
+            
         }
 
         private protected virtual void ParseLobbyInfoPacket(LobbyInfoPacket lobbyInfoPacket, EndPointId endPointId, SocketInfo socketInfo)
@@ -120,7 +142,7 @@ namespace Networking
             }
             else if(socketInfo.NetworkInterface == NetworkInterfaceType.TCP)
             {
-                PrintWarning("cannot get netIdentity from packet:");
+                PrintWarning("cannot get network identity from packet:");
                 Print(syncVarPacket.Data.ToArray());
             }
         }
@@ -156,7 +178,7 @@ namespace Networking
             }
             else if(socketInfo.NetworkInterface == NetworkInterfaceType.TCP)
             {
-                PrintWarning("cannot get netIdentity from packet:");
+                PrintWarning("cannot get network identity from packet:");
                 Print(methodPacket.Data.ToArray());
             }
         }
@@ -266,13 +288,9 @@ namespace Networking
 
         public static void RunActionsSynchronously()
         {
-            lock(synchronousActions)
+            while (synchronousActions.TryDequeue(out Action action))
             {
-                foreach(Action action in synchronousActions)
-                {
-                    action.Invoke();
-                }
-                synchronousActions.Clear();
+                action();
             }
         }
 

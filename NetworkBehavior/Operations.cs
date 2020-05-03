@@ -18,8 +18,13 @@ namespace Networking
             {
                 return Convert.ChangeType(value, type);
             }
-           
-            return NetworkIdentity.GetNetworkIdentityById(value);
+
+            NetworkIdentity networkIdentity = NetworkIdentity.GetNetworkIdentityById(value);
+            if (networkIdentity == null)
+            {
+                NetworkBehavior.PrintWarning("Cannot get network identity in \"Operations\"");
+            }
+            return networkIdentity;
         }
 
         public static object GetObjectAsValue(object obj)

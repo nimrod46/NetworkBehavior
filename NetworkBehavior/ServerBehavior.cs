@@ -23,7 +23,7 @@ namespace Networking
         public bool IsRunning { get; set; }
         internal Dictionary<EndPointId, EndPoint> clients = new Dictionary<EndPointId, EndPoint>();
         internal List<EndPointId> clientsBeforeSync = new List<EndPointId>();
-        public int numberOfPlayer
+        public int NumberOfPlayer
         {
             get
             {
@@ -160,25 +160,35 @@ namespace Networking
         {
             lock (clients)
             {
-                Console.WriteLine("New player at: " + endPointId);
-                SpawnObjectPacket spawnPacket;
-                List<NetworkIdentity> identities = NetworkIdentity.entities.Values.ToList();
-                identities.Sort();
-                clients.Add(endPointId, endPoint);
-                foreach (NetworkIdentity i in identities)
+                lock (NetworkIdentity.entities)
                 {
-                    if(i.IsDestroyed) { continue; }
+                    Console.WriteLine("New player at: " + endPointId);
+                    SpawnObjectPacket spawnPacket;
+                    clients.Add(endPointId, endPoint);
+                    foreach (NetworkIdentity i in NetworkIdentity.entities.Values)
+                    {
+                        if (i.IsDestroyed) { continue; }
 
-                    Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(i);
-                    var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
-                    spawnPacket = new SpawnObjectPacket(GetNetworkClassTypeByName(i.GetType().FullName), i.Id, i.OwnerId, args); //Spawn all existing clients in the remote client
-                    SendPacketToAUser(spawnPacket, NetworkInterfaceType.TCP, endPointId);
+                        spawnPacket = new SpawnObjectPacket(GetNetworkClassTypeByName(i.GetType().FullName), i.Id, i.OwnerId); //Spawn all existing clients in the remote client
+                        SendPacketToAUser(spawnPacket, NetworkInterfaceType.TCP, endPointId);
+                    }
+
+                    SyncObjectVars syncObjectVars;
+                    foreach (var i in NetworkIdentity.entities.Values)
+                    {
+                        if (i.IsDestroyed) { continue; }
+
+                        Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(i);
+                        var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
+                        syncObjectVars = new SyncObjectVars(i.Id, args); //Spawn all existing clients in the remote client
+                        SendPacketToAUser(syncObjectVars, NetworkInterfaceType.TCP, endPointId);
+                    }
+                    //Console.WriteLine("Spawn all existing clients");
+
+                    InitiateDircetInterfacePacket initiateDircetInterface = new InitiateDircetInterfacePacket(endPointId);//Initiate dircet interface with the client
+                    SendPacketToAUser(initiateDircetInterface, NetworkInterfaceType.TCP, endPointId);
+                    //Console.WriteLine("Initiating dircet interface with the client");             
                 }
-                //Console.WriteLine("Spawn all existing clients");
-
-                InitiateDircetInterfacePacket initiateDircetInterface = new InitiateDircetInterfacePacket(endPointId);//Initiate dircet interface with the client
-                SendPacketToAUser(initiateDircetInterface, NetworkInterfaceType.TCP, endPointId);
-                //Console.WriteLine("Initiating dircet interface with the client");             
             }
         }
 
@@ -326,40 +336,43 @@ namespace Networking
             }
         }
 
-        public NetworkIdentity spawnWithServerAuthority(Type instance, NetworkIdentity identity = null)
+        public T SpawnWithServerAuthority<T>(T identity = null) where T : NetworkIdentity
         {
-            return SpawnIdentity(instance, EndPointId.InvalidIdentityId, identity);
+            return SpawnIdentity(EndPointId.InvalidIdentityId, identity);
         }
 
-        public NetworkIdentity spawnWithClientAuthority(Type instance, EndPointId clientId, NetworkIdentity identity = null)
+        public T SpawnWithClientAuthority<T>(EndPointId clientId, T identity = null) where T : NetworkIdentity
         {
-            return SpawnIdentity(instance, clientId, identity);
+            return SpawnIdentity(clientId, identity);
 
         }
 
-        private NetworkIdentity SpawnIdentity(Type instance, EndPointId clientId, NetworkIdentity identity)
+        private T SpawnIdentity<T>(EndPointId clientId, T identity) where T : NetworkIdentity
         {
-            NetworkIdentity.lastId++;
-            IdentityId id = NetworkIdentity.lastId;
-            string[] args = null;
-            if (identity != null)
+            lock (NetworkIdentity.entities)
             {
-                Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(identity);
-                args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
+                NetworkIdentity.lastId++;
+                IdentityId id = NetworkIdentity.lastId;
+                string[] args = null;
+                if (identity != null)
+                {
+                    Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(identity);
+                    args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
+                }
+                identity = Activator.CreateInstance<T>();
+                EndPointId owner = EndPointId.InvalidIdentityId;
+                if (clientId == EndPointId.InvalidIdentityId)
+                {
+                    owner = serverEndPointId;
+                }
+                else
+                {
+                    owner = clientId;
+                }
+                SpawnObjectPacket packet = new SpawnObjectPacket(typeof(T), id, owner, args);
+                BroadcastPacket(packet, NetworkInterfaceType.TCP, clientsBeforeSync.ToArray());
+                InitIdentityLocally(identity, owner, id, args);
             }
-            identity = Activator.CreateInstance(instance) as NetworkIdentity;
-            EndPointId owner = EndPointId.InvalidIdentityId;
-            if (clientId == EndPointId.InvalidIdentityId)
-            {
-                owner = serverEndPointId;
-            }
-            else
-            {
-                owner = clientId;
-            }
-            SpawnObjectPacket packet = new SpawnObjectPacket(instance, id, owner, args);
-            BroadcastPacket(packet, NetworkInterfaceType.TCP, clientsBeforeSync.ToArray());
-            InitIdentityLocally(identity, owner, id, args);
             return identity;
         }
     }

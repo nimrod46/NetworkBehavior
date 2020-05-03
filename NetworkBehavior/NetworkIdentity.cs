@@ -12,7 +12,7 @@ using static NetworkingLib.Server;
 namespace Networking
 {
     
-    public class NetworkIdentity : IComparable<NetworkIdentity>
+    public class NetworkIdentity
     {
         
         public struct IdentityId : IComparable
@@ -110,7 +110,6 @@ namespace Networking
         public bool isInServer = false;
         public bool hasInitialized = false;
         public bool hasFieldsBeenInitialized = false;
-        internal bool isUsedAsVar;
 
         public NetworkIdentity()
         {
@@ -121,9 +120,6 @@ namespace Networking
             }
 
             RegisterMethodsAndLocations();
-
-            isUsedAsVar = prioritiesIdintities.Any(t => t.IsAssignableFrom(GetType()));
-
         }
 
         public void InvokeBroadcastMethodNetworkly(string methodName, NetworkInterfaceType networkInterface = NetworkInterfaceType.TCP, bool? shouldInvokeSynchronously = null, params object[] args)
@@ -293,42 +289,26 @@ namespace Networking
             NetworkBehavior.PrintWarning("No location with name: {0} was not found", methodPacket.MethodName);
         }
 
-    internal List<MemberInfo> GetSyncVars()
+        internal List<MemberInfo> GetSyncVars()
         {
             return GetType().GetFields(bindingFlags).Cast<MemberInfo>().Concat(GetType().GetProperties(bindingFlags)).Where(prop => prop.Name.Length >= 5 && prop.Name.ToLower().Substring(0, 4).Equals("sync")).ToList();
         }
 
         internal static NetworkIdentity GetNetworkIdentityById(IdentityId identityId)
         {
-            if (!NetworkIdentity.entities.TryGetValue(identityId, out NetworkIdentity identity))
+            lock (entities)
             {
-                return null;
+                if (!NetworkIdentity.entities.TryGetValue(identityId, out NetworkIdentity identity))
+                {
+                    return null;
+                }
+                return identity;
             }
-            return identity;
         }
 
         internal static NetworkIdentity GetNetworkIdentityById(object identityId)
         {
             return GetNetworkIdentityById(IdentityId.FromLong(long.Parse(identityId.ToString())));
-        }
-
-        public int CompareTo(NetworkIdentity other)
-        {
-            if(other.GetType() == GetType())
-            {
-                return 0;
-            }
-
-            if(!isUsedAsVar)
-            {
-                return 1;
-            }
-
-            if (isUsedAsVar == other.isUsedAsVar)
-            {
-                return locationByType[other.GetType()].Values.Any(l => GetType().IsAssignableFrom(l.Location.GetType())) ? -1 : 1;
-            }
-            return -1;
         }
 
         private void RegisterMethodsAndLocations()
