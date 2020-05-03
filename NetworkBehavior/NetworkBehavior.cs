@@ -117,7 +117,6 @@ namespace Networking
         {
             if (TryGetNetworkIdentityByPacket(syncObjectVars, out NetworkIdentity identity))
             {
-                Print(syncObjectVars.SpawnParams);
                 Dictionary<string, string> valuesByFieldsDict = syncObjectVars.SpawnParams.Select(v => v.ToString().Split('+')).ToDictionary(k => k[0], v => v[1]);
                 SetObjectFieldsByValues(identity, valuesByFieldsDict);
             }
