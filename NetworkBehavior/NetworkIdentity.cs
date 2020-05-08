@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 using static NetworkingLib.Server;
 
 namespace Networking
@@ -101,6 +102,7 @@ namespace Networking
         internal delegate void BeginSynchronization();
         internal event BeginSynchronization OnBeginSynchronization;
 
+        internal NetworkBehavior NetworkBehavior { get; set; }
         public EndPointId OwnerId { get; set; }
         public IdentityId Id { get; set; }
         public bool IsDestroyed { get; set; }
@@ -108,6 +110,7 @@ namespace Networking
         public bool isServerAuthority = false;
         public bool hasAuthority = false;
         public bool isInServer = false;
+        [XmlIgnore]
         public bool hasInitialized = false;
         public bool hasFieldsBeenInitialized = false;
 
@@ -230,6 +233,12 @@ namespace Networking
             OnBeginSynchronization?.Invoke();
         }
 
+        public void BroadcastDestroy()
+        {
+            InvokeBroadcastMethodNetworkly(nameof(Destroy));
+        }
+
+        [Obsolete("Destroy is deprecated, please use BroadcastDestroy instead.")]
         public void Destroy()
         {
             if (!IsDestroyed)
@@ -239,29 +248,22 @@ namespace Networking
             }
         }
 
-        //public void SetAuthority(EndPointId newOwnerId)
-        //{
-        //    InvokeBroadcastMethodNetworkly(nameof(SetAuthority), newOwnerId);
-        //    if (newOwnerId == EndPointId.InvalidIdentityId)
-        //    {
-        //        hasAuthority = isInServer;
-        //        OwnerId = NetworkBehavior.serverEndPointId;
-        //        isServerAuthority = true;
-        //    }
-        //    else
-        //    {
-        //        if (NetworkBehavior.GetNetworkIdentityById(newOwnerId).OwnerId == newOwnerId)
-        //        {
-        //            OwnerId = newOwnerId;
-        //            hasAuthority = OwnerId == Id;
-        //            isServerAuthority = NetworkBehavior.serverEndPointId == newOwnerId;
-        //        }
-        //        else
-        //        {
-        //            throw new Exception("Invalid owner id was given");
-        //        }
-        //    }
-        //}
+        public void SetAuthority(EndPointId newOwnerId)
+        {
+            InvokeBroadcastMethodNetworkly(nameof(SetAuthority), newOwnerId);
+            if (newOwnerId == EndPointId.InvalidIdentityId)
+            {
+                hasAuthority = isInServer;
+                OwnerId = NetworkBehavior.serverEndPointId;
+                isServerAuthority = true;
+            }
+            else
+            {
+                OwnerId = newOwnerId;
+                hasAuthority = OwnerId == NetworkBehavior.localEndPointId;
+                isServerAuthority = NetworkBehavior.serverEndPointId == newOwnerId;
+            }
+        }
 
         internal static void NetworkSyncVarInvoke(NetworkIdentity identity, SyncVarPacket syncVarPacket, bool shouldInvokeSynchronously)
         {

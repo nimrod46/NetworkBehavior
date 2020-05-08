@@ -91,17 +91,20 @@ namespace Networking
 
         private EndPointId GetEndPointIdByUdpPort(int udpPort)
         {
-            EndPointId endPointId = EndPointId.InvalidIdentityId;
-            foreach (var idAndEndPoint in clients)
+            lock (clients)
             {
-                if (idAndEndPoint.Value.UdpPort == udpPort)
+                EndPointId endPointId = EndPointId.InvalidIdentityId;
+                foreach (var idAndEndPoint in clients)
                 {
-                    endPointId = idAndEndPoint.Key;
-                    return endPointId;
+                    if (idAndEndPoint.Value.UdpPort == udpPort)
+                    {
+                        endPointId = idAndEndPoint.Key;
+                        return endPointId;
+                    }
                 }
+                //PrintWarning("no client with udp port of: " + udpPort + " was found");
+                return endPointId;
             }
-            //PrintWarning("no client with udp port of: " + udpPort + " was found");
-            return endPointId;
         }
 
         private protected override void ParsePacket(PacketId packetId, object[] args, EndPointId endPointId, SocketInfo socketInfo)
@@ -112,14 +115,17 @@ namespace Networking
                     DircetInterfaceInitiatingPacket initiatingPacket = new DircetInterfaceInitiatingPacket(args.ToList());
                     EndPoint eP;
                     EndPointId clientId = initiatingPacket.EndPointId;
-                    if (clients.TryGetValue(clientId, out eP))
+                    lock (clients)
                     {
-                        eP.UdpPort = socketInfo.Port;
-                        clients[clientId] = eP;
-                    }
-                    else
-                    {
-                        PrintWarning("UDP NOT init for: " + clientId);
+                        if (clients.TryGetValue(clientId, out eP))
+                        {
+                            eP.UdpPort = socketInfo.Port;
+                            clients[clientId] = eP;
+                        }
+                        else
+                        {
+                            PrintWarning("UDP NOT init for: " + clientId);
+                        }
                     }
                     clientsBeforeSync.Remove(clientId);
                     OnClientEventHandlerSynchronizedEvent?.Invoke(clientId);

@@ -218,6 +218,7 @@ namespace Networking
 
         protected virtual void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerId, IdentityId id, params object[] valuesByFields)
         {
+            identity.NetworkBehavior = this;
             identity.OwnerId = ownerId;
             identity.Id = id;
             identity.hasAuthority = ownerId == this.localEndPointId;

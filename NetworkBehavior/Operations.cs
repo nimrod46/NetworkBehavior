@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static NetworkingLib.Server;
 
 namespace Networking
 {
@@ -14,6 +15,10 @@ namespace Networking
             {
                 return Enum.Parse(type, value.ToString());
             }
+            else if (typeof(EndPointId).IsAssignableFrom(type))
+            {
+                return EndPointId.FromLong(long.Parse(value.ToString()));
+            }
             else if (type.IsValueType || typeof(string).IsAssignableFrom(type))
             {
                 return Convert.ChangeType(value, type);
@@ -22,7 +27,7 @@ namespace Networking
             NetworkIdentity networkIdentity = NetworkIdentity.GetNetworkIdentityById(value);
             if (networkIdentity == null)
             {
-                NetworkBehavior.PrintWarning("Cannot get network identity in \"Operations\"");
+                NetworkBehavior.PrintWarning("Cannot get network identity in \"Operations\" from {0}", value);
             }
             return networkIdentity;
         }
@@ -40,6 +45,10 @@ namespace Networking
             else if(obj is Enum)
             {
                 return Convert.ToInt32(obj);
+            }
+            else if(obj is EndPointId endPointId)
+            {
+                return endPointId.Id;
             }
             return obj.ToString();
         }
