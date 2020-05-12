@@ -13,16 +13,22 @@ namespace Networking
 
         public List<object> Data { get; } = new List<object>();
 
-        public Packet(PacketId packetId)
+        public bool ShouldInvokeSynchronously { get; private set; }
+
+        public Packet(PacketId packetId, bool shouldInvokeSynchronously)
         {
             PacketId = packetId;
-            Data.Add((int) PacketId);
+            ShouldInvokeSynchronously = shouldInvokeSynchronously;
+            Data.Add((int)PacketId);
+            Data.Add(ShouldInvokeSynchronously);
         }
 
-        public Packet(PacketId packetId, List<object> args) : this(packetId)
+        public Packet(PacketId packetId, List<object> args)
         {
+            PacketId = packetId;
             Data = new List<object>(args);
-            args.RemoveAt(0);
+            ShouldInvokeSynchronously = bool.Parse(args[1].ToString());
+            args.RemoveRange(0, 2);
         }
     }
 }

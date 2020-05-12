@@ -49,13 +49,14 @@ namespace Networking
         public readonly EndPointId serverEndPointId;
         public EndPointId localEndPointId;
         internal static Dictionary<string, Type> classes = new Dictionary<string, Type>();
-
+        protected bool hasSynchronized;
         
 
         public NetworkBehavior(int serverPort)
         {
             this.serverPort = serverPort;
             this.serverEndPointId = EndPointId.FromLong(serverPort);
+            hasSynchronized = false;
         }
 
         public void Start()
@@ -65,11 +66,11 @@ namespace Networking
             NetworkIdentity.OnInvokeLocationNetworkly += OnInvokeLocationNetworkly; 
         }
 
-        protected abstract void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue, bool? shouldInvokeSynchronously = null);
+        internal abstract void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue, bool? shouldInvokeSynchronously = null);
 
-        protected abstract void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null);
+        internal abstract void OnInvokeBroadcastMethodNetworkly(BrodcastMethodEventArgs brodcastMethodEventArgs);
 
-        protected abstract void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null);
+        internal abstract void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null);
 
         private protected void ParseArgs(object[] args, EndPointId endPointId, SocketInfo socketInfo)
         {
@@ -219,6 +220,7 @@ namespace Networking
         protected virtual void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerId, IdentityId id, params object[] valuesByFields)
         {
             identity.NetworkBehavior = this;
+            identity.LocalEndPoint = localEndPointId;
             identity.OwnerId = ownerId;
             identity.Id = id;
             identity.hasAuthority = ownerId == this.localEndPointId;
@@ -286,8 +288,14 @@ namespace Networking
             Console.WriteLine();
         }
 
-        public static void RunActionsSynchronously()
+        public void RunActionsSynchronously()
         {
+            if (!hasSynchronized)
+            {
+                Console.WriteLine("WAITINGGGG: " + synchronousActions.Count);
+                return;
+            }
+
             while (synchronousActions.TryDequeue(out Action action))
             {
                 action();

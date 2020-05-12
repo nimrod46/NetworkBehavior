@@ -12,7 +12,7 @@ namespace Networking
     {
         public IdentityId NetworkIdentityId { get; private set; }
 
-        public NetworkIdentityBasePacket(PacketId packetId, IdentityId networkIdentityId) : base(packetId)
+        public NetworkIdentityBasePacket(PacketId packetId, bool shouldInvokeSynchronously, IdentityId networkIdentityId) : base(packetId, shouldInvokeSynchronously)
         {
             NetworkIdentityId = networkIdentityId;
             Data.Add(NetworkIdentityId.Id);

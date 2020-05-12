@@ -76,9 +76,28 @@ namespace Networking
             }
         }
 
+        internal class BrodcastMethodEventArgs : EventArgs 
+        {
+            public NetworkIdentity NetworkIdentity { get; set; }
+            public NetworkInterfaceType NetworkInterface { get; set; }
+            public string MethodName { get; set; }
+            public object[] MethodArgs { get; set; }
+            public bool? ShouldInvokeSynchronously { get; set; }
+
+            public BrodcastMethodEventArgs(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously)
+            {
+                NetworkIdentity = networkIdentity;
+                NetworkInterface = networkInterface;
+                MethodName = methodName;
+                MethodArgs = methodArgs;
+                ShouldInvokeSynchronously = shouldInvokeSynchronously;
+            }
+        }
+
+
         const BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic;
 
-        internal delegate void InvokeBrodcastMethodNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null);
+        internal delegate void InvokeBrodcastMethodNetworklyEvent(BrodcastMethodEventArgs brodcastMethodEventArgs);
         internal static event InvokeBrodcastMethodNetworklyEvent OnInvokeBrodcastMethodMethodNetworkly;
         internal delegate void InvokeCommandMethodNetworklyEvent(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodNam, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null);
         internal static event InvokeCommandMethodNetworklyEvent OnInvokeCommandMethodNetworkly;
@@ -103,6 +122,7 @@ namespace Networking
         internal event BeginSynchronization OnBeginSynchronization;
 
         internal NetworkBehavior NetworkBehavior { get; set; }
+        public EndPointId LocalEndPoint { get; set; }
         public EndPointId OwnerId { get; set; }
         public IdentityId Id { get; set; }
         public bool IsDestroyed { get; set; }
@@ -140,7 +160,7 @@ namespace Networking
                             methodArgs.Add(Operations.GetObjectAsValue(o));
 
                         }
-                        OnInvokeBrodcastMethodMethodNetworkly.Invoke(this, networkInterface, methodName, methodArgs.ToArray(), shouldInvokeSynchronously);
+                        OnInvokeBrodcastMethodMethodNetworkly.Invoke(new BrodcastMethodEventArgs(this, networkInterface, methodName, methodArgs.ToArray(), shouldInvokeSynchronously));
                     });
                     return;
                 }

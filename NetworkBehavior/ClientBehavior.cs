@@ -74,6 +74,7 @@ namespace Networking
                     localEndPointId = initiateDircetInterfacePacket.ClientId;
                     DircetInterfaceInitiatingPacket initiatingPacket = new DircetInterfaceInitiatingPacket(initiateDircetInterfacePacket.ClientId);
                     Send(initiatingPacket, NetworkInterfaceType.UDP);
+                    hasSynchronized = true;
                     break;
                 default:
                     base.ParsePacket(packetId, args, endPointId, socketInfo);
@@ -109,19 +110,19 @@ namespace Networking
             }
         }
 
-        protected override void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null)
+        internal override void OnInvokeBroadcastMethodNetworkly(BrodcastMethodEventArgs brodcastMethodEventArgs)
         {
             if (!IsConnected)
             {
                 throw new Exception("No connection exist!");
             }
-            shouldInvokeSynchronously ??= networkInterface == NetworkInterfaceType.TCP;
+            brodcastMethodEventArgs.ShouldInvokeSynchronously ??= brodcastMethodEventArgs.NetworkInterface == NetworkInterfaceType.TCP;
             BroadcastPacket packet;
-            packet = new BroadcastPacket(networkIdentity.Id, methodName, shouldInvokeSynchronously.Value, methodArgs);
-            Send(packet, networkInterface);
-            ParseBroadcastPacket(packet, localEndPointId, new SocketInfo(null, -1, networkInterface));
+            packet = new BroadcastPacket(brodcastMethodEventArgs.NetworkIdentity.Id, brodcastMethodEventArgs.MethodName, brodcastMethodEventArgs.ShouldInvokeSynchronously.Value, brodcastMethodEventArgs.MethodArgs);
+            Send(packet, brodcastMethodEventArgs.NetworkInterface);
+            ParseBroadcastPacket(packet, localEndPointId, new SocketInfo(null, -1, brodcastMethodEventArgs.NetworkInterface));
         }
-        protected override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null)
+        internal override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null)
         {
             if (!IsConnected)
             {
@@ -133,7 +134,7 @@ namespace Networking
             Send(packet, networkInterface);
         }
 
-        protected override void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue, bool? shouldInvokeSynchronously = null)
+        internal override void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue, bool? shouldInvokeSynchronously = null)
         {
             if (!IsConnected)
             {

@@ -55,6 +55,7 @@ namespace Networking
             server.OnConnectionAcceptedEvent += Server_connectionAcceptedEvent;
             server.OnConnectionLobbyAcceptedEvent += Server_OnConnectionLobbyAcceptedEvent;
             server.OnClientDisconnectedEvent += Server_OnClientDisconnectedEvent;
+            hasSynchronized = true;
         }
 
         private void Server_receivedEvent(object[][] data, EndPointId endPointId, SocketInfo socketInfo)
@@ -153,7 +154,7 @@ namespace Networking
 
         private void BroadcastPacket(Packet packet, EndPointId endPointId, SocketInfo socketInfo)
         {
-            BroadcastPacket(packet, socketInfo.NetworkInterface, clientsBeforeSync.Concat(new EndPointId[] { endPointId }).ToArray());
+            BroadcastPacket(packet, socketInfo.NetworkInterface, endPointId);
         }
 
         protected override void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerID, IdentityId id, params object[] valuesByFields)
@@ -175,7 +176,7 @@ namespace Networking
                     {
                         if (i.IsDestroyed) { continue; }
 
-                        spawnPacket = new SpawnObjectPacket(GetNetworkClassTypeByName(i.GetType().FullName), i.Id, i.OwnerId); //Spawn all existing clients in the remote client
+                        spawnPacket = new SpawnObjectPacket(false, GetNetworkClassTypeByName(i.GetType().FullName), i.Id, i.OwnerId); //Spawn all existing clients in the remote client
                         SendPacketToAUser(spawnPacket, NetworkInterfaceType.TCP, endPointId);
                     }
 
@@ -186,7 +187,7 @@ namespace Networking
 
                         Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(i);
                         var args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
-                        syncObjectVars = new SyncObjectVars(i.Id, args); //Spawn all existing clients in the remote client
+                        syncObjectVars = new SyncObjectVars(false,i.Id, args); //Sync all existing clients vars
                         SendPacketToAUser(syncObjectVars, NetworkInterfaceType.TCP, endPointId);
                     }
                     //Console.WriteLine("Spawn all existing clients");
@@ -198,19 +199,19 @@ namespace Networking
             }
         }
 
-        protected override void OnInvokeBroadcastMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null)
+        internal override void OnInvokeBroadcastMethodNetworkly(BrodcastMethodEventArgs brodcastMethodEventArgs)
         {
             if (!IsRunning)
             {
                 throw new Exception("No connection exist!");
             }
-            shouldInvokeSynchronously ??= networkInterface == NetworkInterfaceType.TCP;
+            brodcastMethodEventArgs.ShouldInvokeSynchronously ??= brodcastMethodEventArgs.NetworkInterface == NetworkInterfaceType.TCP;
             BroadcastPacket packet;
-            packet = new BroadcastPacket(networkIdentity.Id, methodName, shouldInvokeSynchronously.Value, methodArgs);
-            ParseBroadcastPacket(packet, EndPointId.InvalidIdentityId, new SocketInfo(null, serverPort, networkInterface));
+            packet = new BroadcastPacket(brodcastMethodEventArgs.NetworkIdentity.Id, brodcastMethodEventArgs.MethodName, brodcastMethodEventArgs.ShouldInvokeSynchronously.Value, brodcastMethodEventArgs.MethodArgs);
+            ParseBroadcastPacket(packet, EndPointId.InvalidIdentityId, new SocketInfo(null, serverPort, brodcastMethodEventArgs.NetworkInterface));
         }
 
-        protected override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null)
+        internal override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null)
         { 
             if (!IsRunning)
             {
@@ -230,7 +231,7 @@ namespace Networking
             }
         }
 
-        protected override void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue, bool? shouldInvokeSynchronously = null)
+        internal override void OnInvokeLocationNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string locationName, object locationValue, bool? shouldInvokeSynchronously = null)
         {
             if (!IsRunning)
             {
@@ -239,7 +240,7 @@ namespace Networking
             shouldInvokeSynchronously ??= networkInterface == NetworkInterfaceType.TCP;
             SyncVarPacket packet;
             packet = new SyncVarPacket(networkIdentity.Id, locationName, locationValue, shouldInvokeSynchronously.Value);
-            BroadcastPacket(packet, networkInterface, clientsBeforeSync.ToArray());
+            BroadcastPacket(packet, networkInterface);
         }
 
         public void SendLobbyInfo(EndPointId endPointId, string data)
@@ -275,6 +276,10 @@ namespace Networking
 
         internal void BroadcastPacket(Packet packet, NetworkInterfaceType networkInterface, params EndPointId[] clientsId)
         {
+            if (!packet.ShouldInvokeSynchronously)
+            {
+                clientsId = clientsBeforeSync.Concat(clientsId).ToArray();
+            }
             Broadcast(packet.Data.ToArray(), networkInterface, clientsId);
         }
 
@@ -286,7 +291,7 @@ namespace Networking
             }
             else
             {
-                DirectBroadcast(args, clientsId);
+                DirectBroadcast(args, clientsBeforeSync.Concat(clientsId).ToArray());
             }
         }
 
@@ -375,8 +380,8 @@ namespace Networking
                 {
                     owner = clientId;
                 }
-                SpawnObjectPacket packet = new SpawnObjectPacket(typeof(T), id, owner, args);
-                BroadcastPacket(packet, NetworkInterfaceType.TCP, clientsBeforeSync.ToArray());
+                SpawnObjectPacket packet = new SpawnObjectPacket(true, typeof(T), id, owner, args);
+                BroadcastPacket(packet, NetworkInterfaceType.TCP);
                 InitIdentityLocally(identity, owner, id, args);
             }
             return identity;

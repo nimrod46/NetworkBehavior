@@ -12,7 +12,7 @@ namespace Networking
     {
         public EndPointId ClientId { get; private set; }
 
-        public InitiateDircetInterfacePacket(EndPointId clientId) : base(PacketId.InitiateDircetInterface)
+        public InitiateDircetInterfacePacket(EndPointId clientId) : base(PacketId.InitiateDircetInterface, false)
         {
             ClientId = clientId;
             Data.Add(ClientId.Id);

@@ -10,7 +10,7 @@ namespace Networking
     {
         public string Info { get; private set; }
 
-        public LobbyInfoPacket(string info) : base(PacketId.LobbyInfo)
+        public LobbyInfoPacket(string info) : base(PacketId.LobbyInfo, false)
         {
             Info = info;
             Data.Add(Info);

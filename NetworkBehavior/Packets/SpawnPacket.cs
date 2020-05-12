@@ -15,7 +15,7 @@ namespace Networking
         public int SpawnParamCount { get; private set; }
         public object[] SpawnParams { get; private set; }
 
-        internal SpawnPacket(PacketId packetID, IdentityId id, Type instance, EndPointId ownerId, params object[] spawnParams) : base(packetID, id)
+        internal SpawnPacket(PacketId packetID, bool shouldInvokeSynchronously, IdentityId id, Type instance, EndPointId ownerId, params object[] spawnParams) : base(packetID, shouldInvokeSynchronously, id)
         {
             InstanceName = instance.FullName;
             OwnerId = ownerId;

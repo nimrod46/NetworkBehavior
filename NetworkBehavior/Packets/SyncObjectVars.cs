@@ -13,7 +13,7 @@ namespace Networking
         public int SpawnParamCount { get; private set; }
         public object[] SpawnParams { get; private set; }
 
-        internal SyncObjectVars(IdentityId id, params string[] spawnParams) : base(PacketId.SyncObjectVars, id)
+        internal SyncObjectVars(bool shouldInvokeSynchronously, IdentityId id, params string[] spawnParams) : base(PacketId.SyncObjectVars, shouldInvokeSynchronously, id)
         {
             SpawnParamCount = spawnParams.Count();
             SpawnParams = spawnParams;

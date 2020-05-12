@@ -12,7 +12,7 @@ namespace Networking
     internal class DircetInterfaceInitiatingPacket : Packet
     {
         public EndPointId EndPointId { get; private set; }
-        public DircetInterfaceInitiatingPacket(EndPointId endPointId) : base(PacketId.DircetInterfaceInitiating)
+        public DircetInterfaceInitiatingPacket(EndPointId endPointId) : base(PacketId.DircetInterfaceInitiating, false)
         {
             EndPointId = endPointId;
             Data.Add(EndPointId.Id);

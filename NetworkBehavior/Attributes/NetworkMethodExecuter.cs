@@ -13,7 +13,7 @@ namespace Networking
 {
     internal class NetworkMethodExecuter : NetworkMemberExecuter
     {
-        MethodBase method;
+        private readonly MethodBase method;
         internal NetworkMethodExecuter(MethodBase method) : base()
         {
             this.method = method;
