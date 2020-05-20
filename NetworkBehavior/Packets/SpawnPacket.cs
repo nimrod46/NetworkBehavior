@@ -12,17 +12,20 @@ namespace Networking
     {
         public string InstanceName { get; private set; }
         public EndPointId OwnerId { get; private set; }
+        public bool SpawnDuringSync { get; private set; }
         public int SpawnParamCount { get; private set; }
         public object[] SpawnParams { get; private set; }
 
-        internal SpawnPacket(PacketId packetID, bool shouldInvokeSynchronously, IdentityId id, Type instance, EndPointId ownerId, params object[] spawnParams) : base(packetID, shouldInvokeSynchronously, id)
+        internal SpawnPacket(PacketId packetID, bool shouldInvokeSynchronously, IdentityId id, Type instance, EndPointId ownerId, bool spawnDuringSync, params object[] spawnParams) : base(packetID, shouldInvokeSynchronously, id)
         {
             InstanceName = instance.FullName;
             OwnerId = ownerId;
+            SpawnDuringSync = spawnDuringSync;
             SpawnParamCount = spawnParams != null ? spawnParams.Count() : 0;
             SpawnParams = spawnParams;
             Data.Add(InstanceName);
             Data.Add(OwnerId.Id);
+            Data.Add(SpawnDuringSync);
             Data.Add(SpawnParamCount);
             if (SpawnParams != null) Data.AddRange(SpawnParams) ;
         }
@@ -31,9 +34,10 @@ namespace Networking
         {
             InstanceName = args[0].ToString();
             OwnerId = EndPointId.FromLong(Convert.ToInt64(args[1]));
-            SpawnParamCount = Convert.ToInt32(args[2]);
-            SpawnParams = args.GetRange(3, SpawnParamCount).ToArray();
-            args.RemoveRange(0, 3 + SpawnParamCount);
+            SpawnDuringSync = bool.Parse(args[2].ToString());
+            SpawnParamCount = Convert.ToInt32(args[3]);
+            SpawnParams = args.GetRange(4, SpawnParamCount).ToArray();
+            args.RemoveRange(0, 4 + SpawnParamCount);
         }
     }
 }

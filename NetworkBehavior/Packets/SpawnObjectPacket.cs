@@ -10,7 +10,7 @@ namespace Networking
 {
     internal class SpawnObjectPacket : SpawnPacket
     {
-        internal SpawnObjectPacket(bool shouldInvokeSynchronously, Type instance, IdentityId id, EndPointId ownerId, params string[] spawnParams) : base(PacketId.SpawnObject, shouldInvokeSynchronously, id, instance, ownerId, spawnParams)
+        internal SpawnObjectPacket(bool shouldInvokeSynchronously, Type instance, IdentityId id, EndPointId ownerId, bool spawnDuringSync, params string[] spawnParams) : base(PacketId.SpawnObject, shouldInvokeSynchronously, id, instance, ownerId, spawnDuringSync, spawnParams)
         {
         }
 

@@ -59,10 +59,10 @@ namespace Networking
             }
         }
 
-        protected override void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerID, IdentityId id, params object[] valuesByFields)
+        protected override void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerID, IdentityId id, bool spawnDuringSync, params object[] valuesByFields)
         {
             identity.isInServer = false;
-            base.InitIdentityLocally(identity, ownerID, id, valuesByFields);
+            base.InitIdentityLocally(identity, ownerID, id, spawnDuringSync, valuesByFields);
         }
 
         private protected override void ParsePacket(PacketId packetId, object[] args, EndPointId endPointId, SocketInfo socketInfo) 
@@ -120,7 +120,7 @@ namespace Networking
             BroadcastPacket packet;
             packet = new BroadcastPacket(brodcastMethodEventArgs.NetworkIdentity.Id, brodcastMethodEventArgs.MethodName, brodcastMethodEventArgs.ShouldInvokeSynchronously.Value, brodcastMethodEventArgs.MethodArgs);
             Send(packet, brodcastMethodEventArgs.NetworkInterface);
-            ParseBroadcastPacket(packet, localEndPointId, new SocketInfo(null, -1, brodcastMethodEventArgs.NetworkInterface));
+            ParseBroadcastPacket(packet, false, localEndPointId, new SocketInfo(null, -1, brodcastMethodEventArgs.NetworkInterface));
         }
         internal override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null)
         {

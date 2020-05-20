@@ -44,6 +44,9 @@ namespace Networking
         public delegate void IdentityInitializeEventHandler(NetworkIdentity client);
         public event IdentityInitializeEventHandler OnRemoteIdentityInitialize;
         public event IdentityInitializeEventHandler OnLocalIdentityInitialize;
+        public delegate void IdentityDestroyEventHandler(NetworkIdentity identity);
+        public event IdentityDestroyEventHandler OnRemoteIdentityDestroy;
+        public event IdentityDestroyEventHandler OnLocalIdentityDestroy;
 
         public readonly int serverPort;
         public readonly EndPointId serverEndPointId;
@@ -91,11 +94,11 @@ namespace Networking
                     break;
                 case PacketId.BroadcastMethod:
                     BroadcastPacket broadcastPacket = new BroadcastPacket(args.ToList());
-                    ParseBroadcastPacket(broadcastPacket, endPointId, socketInfo);
+                    ParseBroadcastPacket(broadcastPacket, broadcastPacket.ShouldInvokeSynchronously, endPointId, socketInfo);
                     break;
                 case PacketId.Command:
                     CommandPacket commandPacket = new CommandPacket(args.ToList());
-                    ParseCommandPacket(commandPacket, endPointId, socketInfo);
+                    ParseCommandPacket(commandPacket, commandPacket.ShouldInvokeSynchronously, endPointId, socketInfo);
                     break;
                 case PacketId.SyncVar:
                     SyncVarPacket syncVarPacket = new SyncVarPacket(args.ToList());
@@ -120,6 +123,7 @@ namespace Networking
             {
                 Dictionary<string, string> valuesByFieldsDict = syncObjectVars.SpawnParams.Select(v => v.ToString().Split('+')).ToDictionary(k => k[0], v => v[1]);
                 SetObjectFieldsByValues(identity, valuesByFieldsDict);
+                CallIdentityEvent(identity);
             }
             else if (socketInfo.NetworkInterface == NetworkInterfaceType.TCP)
             {
@@ -157,24 +161,24 @@ namespace Networking
             NetworkIdentity identity;
             object o = SpawnObjectLocaly(spawnPacket.InstanceName);
             identity = o as NetworkIdentity;
-            InitIdentityLocally(identity, spawnPacket.OwnerId, spawnPacket.NetworkIdentityId, spawnPacket.SpawnParams);
+            InitIdentityLocally(identity, spawnPacket.OwnerId, spawnPacket.NetworkIdentityId, spawnPacket.SpawnDuringSync, spawnPacket.SpawnParams);
         }
 
-        private protected virtual void ParseBroadcastPacket(BroadcastPacket broadcastPacket, EndPointId endPointId, SocketInfo socketInfo)
+        private protected virtual void ParseBroadcastPacket(BroadcastPacket broadcastPacket, bool shouldInvokeSynchronously, EndPointId endPointId, SocketInfo socketInfo)
         {
-            ParseMethodPacket(broadcastPacket, socketInfo);
+            ParseMethodPacket(broadcastPacket, shouldInvokeSynchronously, socketInfo);
         }
 
-        private protected virtual void ParseCommandPacket(CommandPacket commandPacket, EndPointId endPointId, SocketInfo socketInfo)
+        private protected virtual void ParseCommandPacket(CommandPacket commandPacket, bool shouldInvokeSynchronously, EndPointId endPointId, SocketInfo socketInfo)
         {
-            ParseMethodPacket(commandPacket, socketInfo);
+            ParseMethodPacket(commandPacket, shouldInvokeSynchronously, socketInfo);
         }
 
-        private protected virtual void ParseMethodPacket(MethodPacket methodPacket, SocketInfo socketInfo)
+        private protected virtual void ParseMethodPacket(MethodPacket methodPacket, bool shouldInvokeSynchronously, SocketInfo socketInfo)
         {
             if (TryGetNetworkIdentityByPacket(methodPacket, out NetworkIdentity identity))
             {
-                NetworkIdentity.NetworkMethodInvoke(identity, methodPacket, methodPacket.ShouldInvokeSynchronously);
+                NetworkIdentity.NetworkMethodInvoke(identity, methodPacket, shouldInvokeSynchronously);
             }
             else if(socketInfo.NetworkInterface == NetworkInterfaceType.TCP)
             {
@@ -217,7 +221,7 @@ namespace Networking
             return null;
         }
 
-        protected virtual void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerId, IdentityId id, params object[] valuesByFields)
+        protected virtual void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerId, IdentityId id, bool spawnDuringSync, params object[] valuesByFields)
         {
             identity.NetworkBehavior = this;
             identity.LocalEndPoint = localEndPointId;
@@ -231,6 +235,15 @@ namespace Networking
                 SetObjectFieldsByValues(identity, valuesByFieldsDict);
                 identity.hasFieldsBeenInitialized = true;
             }
+            identity.AddToEntities();
+            if (!spawnDuringSync)
+            {
+                CallIdentityEvent(identity);
+            }
+        }
+
+        private void CallIdentityEvent(NetworkIdentity identity)
+        {
             identity.PreformEvents();
             if (identity.hasAuthority)
             {
@@ -251,11 +264,11 @@ namespace Networking
                 (p is FieldInfo) ?
             typeof(NetworkIdentity).IsAssignableFrom(((FieldInfo)p).FieldType) ?
             ((FieldInfo)p).GetValue(obj) != null ? (((FieldInfo)p).GetValue(obj) as NetworkIdentity).Id.ToString() : "null" :
-            ((FieldInfo)p).GetValue(obj).ToString() :
+            ((FieldInfo)p).GetValue(obj)?.ToString() :
 
             typeof(NetworkIdentity).IsAssignableFrom(((PropertyInfo)p).PropertyType) ? 
             ((PropertyInfo)p).GetValue(obj) != null ? (((PropertyInfo)p).GetValue(obj) as NetworkIdentity).Id.ToString() : "null" :
-            ((PropertyInfo)p).GetValue(obj).ToString()
+            ((PropertyInfo)p).GetValue(obj)?.ToString()
             );
             return dic;
         }
@@ -299,6 +312,18 @@ namespace Networking
             while (synchronousActions.TryDequeue(out Action action))
             {
                 action();
+            }
+        }
+
+        internal void IdentityDestroy(NetworkIdentity networkIdentity)
+        {
+            if(networkIdentity.hasAuthority)
+            {
+                OnLocalIdentityDestroy?.Invoke(networkIdentity);
+            }
+            else
+            {
+                OnRemoteIdentityDestroy?.Invoke(networkIdentity);
             }
         }
 

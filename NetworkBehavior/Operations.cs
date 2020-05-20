@@ -23,7 +23,10 @@ namespace Networking
             {
                 return Convert.ChangeType(value, type);
             }
-
+            if(value.ToString() == "null")
+            {
+                return null;
+            }
             NetworkIdentity networkIdentity = NetworkIdentity.GetNetworkIdentityById(value);
             if (networkIdentity == null)
             {

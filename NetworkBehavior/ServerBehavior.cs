@@ -140,10 +140,10 @@ namespace Networking
             }
         }
 
-        private protected override void ParseBroadcastPacket(BroadcastPacket broadcastPacket, EndPointId endPointId, SocketInfo socketInfo)
+        private protected override void ParseBroadcastPacket(BroadcastPacket broadcastPacket, bool shouldInvokeSynchronously, EndPointId endPointId, SocketInfo socketInfo)
         {
             BroadcastPacket(broadcastPacket, endPointId, socketInfo);
-            base.ParseBroadcastPacket(broadcastPacket, endPointId, socketInfo);
+            base.ParseBroadcastPacket(broadcastPacket, shouldInvokeSynchronously, endPointId, socketInfo);
         }
 
         private protected override void ParseSyncVarPacket(SyncVarPacket syncVarPacket, EndPointId endPointId, SocketInfo socketInfo)
@@ -157,10 +157,10 @@ namespace Networking
             BroadcastPacket(packet, socketInfo.NetworkInterface, endPointId);
         }
 
-        protected override void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerID, IdentityId id, params object[] valuesByFields)
+        protected override void InitIdentityLocally(NetworkIdentity identity, EndPointId ownerID, IdentityId id, bool spawnDuringSync, params object[] valuesByFields)
         {
             identity.isInServer = true;
-            base.InitIdentityLocally(identity, ownerID, id, valuesByFields);
+            base.InitIdentityLocally(identity, ownerID, id, spawnDuringSync, valuesByFields);
         }
 
         private void Synchronize(EndPointId endPointId, EndPoint endPoint)
@@ -176,7 +176,7 @@ namespace Networking
                     {
                         if (i.IsDestroyed) { continue; }
 
-                        spawnPacket = new SpawnObjectPacket(false, GetNetworkClassTypeByName(i.GetType().FullName), i.Id, i.OwnerId); //Spawn all existing clients in the remote client
+                        spawnPacket = new SpawnObjectPacket(false, GetNetworkClassTypeByName(i.GetType().FullName), i.Id, i.OwnerId, true); //Spawn all existing clients in the remote client
                         SendPacketToAUser(spawnPacket, NetworkInterfaceType.TCP, endPointId);
                     }
 
@@ -208,7 +208,7 @@ namespace Networking
             brodcastMethodEventArgs.ShouldInvokeSynchronously ??= brodcastMethodEventArgs.NetworkInterface == NetworkInterfaceType.TCP;
             BroadcastPacket packet;
             packet = new BroadcastPacket(brodcastMethodEventArgs.NetworkIdentity.Id, brodcastMethodEventArgs.MethodName, brodcastMethodEventArgs.ShouldInvokeSynchronously.Value, brodcastMethodEventArgs.MethodArgs);
-            ParseBroadcastPacket(packet, EndPointId.InvalidIdentityId, new SocketInfo(null, serverPort, brodcastMethodEventArgs.NetworkInterface));
+            ParseBroadcastPacket(packet, false, EndPointId.InvalidIdentityId, new SocketInfo(null, serverPort, brodcastMethodEventArgs.NetworkInterface));
         }
 
         internal override void OnInvokeCommandMethodNetworkly(NetworkIdentity networkIdentity, NetworkInterfaceType networkInterface, string methodName, object[] methodArgs, bool? shouldInvokeSynchronously = null, EndPointId? targetId = null)
@@ -223,7 +223,7 @@ namespace Networking
             packet = new CommandPacket(networkIdentity.Id, methodName, shouldInvokeSynchronously.Value, methodArgs);
             if (targetId == serverEndPointId)
             {
-                ParseCommandPacket(packet, serverEndPointId, new SocketInfo("", serverPort, networkInterface));
+                ParseCommandPacket(packet, shouldInvokeSynchronously.Value, serverEndPointId, new SocketInfo("", serverPort, networkInterface));
             }
             else
             {
@@ -347,18 +347,27 @@ namespace Networking
             }
         }
 
-        public T SpawnWithServerAuthority<T>(T identity = null) where T : NetworkIdentity
+        public dynamic SpawnWithServerAuthority(NetworkIdentity identity) 
         {
-            return SpawnIdentity(EndPointId.InvalidIdentityId, identity);
+            return SpawnIdentity(identity.GetType(), EndPointId.InvalidIdentityId, identity);
         }
 
-        public T SpawnWithClientAuthority<T>(EndPointId clientId, T identity = null) where T : NetworkIdentity
+        public dynamic SpawnWithClientAuthority(NetworkIdentity identity, EndPointId clientId) 
         {
-            return SpawnIdentity(clientId, identity);
-
+            return SpawnIdentity(identity.GetType(), clientId, identity);
         }
 
-        private T SpawnIdentity<T>(EndPointId clientId, T identity) where T : NetworkIdentity
+        public dynamic SpawnWithServerAuthority(Type type)
+        {
+            return SpawnIdentity(type, EndPointId.InvalidIdentityId);
+        }
+
+        public dynamic SpawnWithClientAuthority(Type type, EndPointId clientId)
+        {
+            return SpawnIdentity(type, clientId);
+        }
+
+        private dynamic SpawnIdentity(Type type, EndPointId clientId, NetworkIdentity identity = null) 
         {
             lock (NetworkIdentity.entities)
             {
@@ -370,7 +379,7 @@ namespace Networking
                     Dictionary<string, string> valuesByFields = GetValuesByFieldsFromObject(identity);
                     args = valuesByFields.Select(k => k.Key + "+" + k.Value).ToArray();
                 }
-                identity = Activator.CreateInstance<T>();
+                NetworkIdentity newIdentity = Activator.CreateInstance(type) as NetworkIdentity;
                 EndPointId owner = EndPointId.InvalidIdentityId;
                 if (clientId == EndPointId.InvalidIdentityId)
                 {
@@ -380,11 +389,12 @@ namespace Networking
                 {
                     owner = clientId;
                 }
-                SpawnObjectPacket packet = new SpawnObjectPacket(true, typeof(T), id, owner, args);
+                SpawnObjectPacket packet = new SpawnObjectPacket(true, newIdentity.GetType(), id, owner, false, args);
                 BroadcastPacket(packet, NetworkInterfaceType.TCP);
-                InitIdentityLocally(identity, owner, id, args);
+                InitIdentityLocally(newIdentity, owner, id, false, args);
+
+                return newIdentity;
             }
-            return identity;
         }
     }
 }

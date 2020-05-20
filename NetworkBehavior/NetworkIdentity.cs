@@ -231,7 +231,7 @@ namespace Networking
             NetworkBehavior.PrintWarning("No location with name: {0} was not found", locationName);
         }
 
-        internal void PreformEvents()
+        internal void AddToEntities()
         {
             lock (entities)
             {
@@ -239,13 +239,17 @@ namespace Networking
                 {
                     entities.Add(Id, this);
                 }
-                if (hasAuthority)
-                {
-                    OnHasLocalAuthorityInitializeEvent?.Invoke();
-                }
-                hasInitialized = true;
-                OnNetworkInitializeEvent?.Invoke();
             }
+        }
+
+        internal void PreformEvents()
+        {
+            if (hasAuthority)
+            {
+                OnHasLocalAuthorityInitializeEvent?.Invoke();
+            }
+            hasInitialized = true;
+            OnNetworkInitializeEvent?.Invoke();
         }
 
         public void Synchronize()
@@ -265,6 +269,7 @@ namespace Networking
             {
                 IsDestroyed = true;
                 OnDestroyEvent?.Invoke(this);
+                NetworkBehavior.IdentityDestroy(this);
             }
         }
 
