@@ -99,7 +99,7 @@ So lets say we are building a game and we have this object:
     </details>  
 
     Right now you dont really need to understand what is going on there just remember that we have a network object class called `GameObject`
-1. Before creating the object we need to _register_ it in the server and all clients, registering is done by simply creating an instance 
+1. Before creating the object we need to _register_ it in the server and all clients, registering is done by simply creating a dummy instance 
 _(Do not use this object)_:  
 `new GameObject();`  
 You must register all network object __before__ connecting to a server, the server also needs to register all network objects.
