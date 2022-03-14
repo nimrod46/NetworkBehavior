@@ -2,7 +2,7 @@
 Low level library of TCP and UDP communications for desktop apps.
 
 ## Overview
-Easy to setup library that will allow you to create a server and clients communication, using it
+Easy to setup library that will allow you to create a server and clients communication, while using it,
 all network objects will inherit from `NetworkIdentity` and will have those features:
   1. __Sync variables through all clients and server__, with one line of code you can update a varibale in all clients
   1. __Broadcast method__, with one line of code you can broadcast methods with supported parameters
