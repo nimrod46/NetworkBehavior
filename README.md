@@ -6,7 +6,7 @@ Easy to setup library that will allow you to create a server and clients communi
 all network objects will inherit from `NetworkIdentity` and will have those features:
   1. __Sync variables through all clients and server__, with one line of code you can update a varibale in all clients
   1. __Broadcast method__, with one line of code you can broadcast methods with supported parameters
-  1. __Sync all cliens automatically__, new clients will automatically be sync with all the relevent object and object's virables
+  1. __Sync all cliens automatically__, new clients will automatically be sync with all the relevent object and object's variables
 
 
 ## Usage
@@ -102,7 +102,7 @@ So lets say we are building a game and we have this object:
 1. Before creating the object we need to _register_ it in the server and all clients, registering is done by simply creating an instance 
 _(Do not use this object)_:  
 `new GameObject();`  
-You must to register all network object __before__ connecting to a server, the server also needs to register all network objects.
+You must register all network object __before__ connecting to a server, the server also needs to register all network objects.
 
 1. Then we want to create an instance in the sever and all clients, __only the server can create new network objects:__
     1. If the object is a server's object (meaning only the server should control it):  
